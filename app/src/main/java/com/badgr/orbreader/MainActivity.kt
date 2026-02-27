@@ -21,8 +21,10 @@ class MainActivity : ComponentActivity() {
                 Surface {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "library") {
-
+                    NavHost(
+                        navController = navController,
+                        startDestination = "library"
+                    ) {
                         composable("library") {
                             LibraryScreen(
                                 onOpenBook = { bookId ->
@@ -32,7 +34,9 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("reader/{bookId}") { backStackEntry ->
-                            val bookId = backStackEntry.arguments?.getString("bookId") ?: return@composable
+                            val bookId = backStackEntry.arguments?.getString("bookId")
+                                ?: return@composable
+
                             ReaderScreen(
                                 bookId = bookId,
                                 onBack = { navController.popBackStack() }
