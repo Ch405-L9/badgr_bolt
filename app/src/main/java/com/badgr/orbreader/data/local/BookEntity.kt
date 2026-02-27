@@ -9,9 +9,10 @@ import com.badgr.orbreader.data.model.FileType
 data class BookEntity(
     @PrimaryKey val id: String,
     val title: String,
-    val fileType: String,   // stored as string name of FileType enum
+    val fileType: String,
     val wordCount: Int,
-    val createdAt: Long
+    val createdAt: Long,
+    val currentWordIndex: Int = 0          // T02 — reading position
 ) {
     fun toDomain() = Book(
         id        = id,

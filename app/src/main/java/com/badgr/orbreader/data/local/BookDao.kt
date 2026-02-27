@@ -20,4 +20,8 @@ interface BookDao {
 
     @Query("DELETE FROM books WHERE id = :id")
     suspend fun deleteBookById(id: String)
+
+    // T02 — save reading position
+    @Query("UPDATE books SET currentWordIndex = :index WHERE id = :bookId")
+    suspend fun updateProgress(bookId: String, index: Int)
 }
