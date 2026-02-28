@@ -20,7 +20,7 @@ android {
         buildConfigField(
             "String",
             "BACKEND_BASE_URL",
-            "\"https://orbreaderbackend.onrender.com\""
+            "\"https://badgr-text-service.onrender.com\""
         )
     }
 
