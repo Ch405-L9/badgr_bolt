@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.OrbReaderRSVP" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Main app theme for BADGR Bolt -->
+    <style name="Theme.OrbReaderRSVP" parent="Theme.Material3.Light.NoActionBar">
+        <!-- BADGR primary color -->
+        <item name="colorPrimary">#020929</item>
+    </style>
 </resources>

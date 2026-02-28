@@ -3,25 +3,29 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
     namespace  = "com.badgr.orbreader"
-    compileSdk = 35                          // required by core-ktx:1.15.0
+    compileSdk = 35
 
     defaultConfig {
         applicationId  = "com.badgr.orbreader"
         minSdk         = 26
-        targetSdk      = 34                  // runtime behavior stays at 34
+        targetSdk      = 35
         versionCode    = 1
         versionName    = "1.0"
 
-        // NOTE: update URL if backend host changes (e.g., 10.0.2.2 for emulator)
         buildConfigField(
             "String",
             "BACKEND_BASE_URL",
             "\"https://badgr-text-service.onrender.com\""
         )
+    }
+
+    room {
+        schemaDirectory("$projectDir/schemas")
     }
 
     buildTypes {
@@ -48,11 +52,6 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        // Use BOM-managed versions; this just satisfies the DSL
-        kotlinCompilerExtensionVersion = "1.5.15"
-    }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -71,17 +70,19 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+    
+    // Add the XML Material Components library to resolve theme resource linking
+    implementation(libs.google.material)
+
     debugImplementation(libs.androidx.ui.tooling)
 
-    // Navigation for Compose
     implementation(libs.androidx.navigation.compose)
 
-    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(platform(libs.okhttp.bom))
@@ -89,6 +90,8 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.gson)
 
-    // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Cover image loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

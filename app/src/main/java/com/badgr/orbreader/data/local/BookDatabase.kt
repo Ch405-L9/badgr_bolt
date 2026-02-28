@@ -5,9 +5,17 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import androidx.room.AutoMigration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [BookEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [BookEntity::class],
+    version = 3,
+    exportSchema = true,
+    autoMigrations = [
+        // AutoMigration(from = 2, to = 3)
+    ]
+)
 abstract class BookDatabase : RoomDatabase() {
 
     abstract fun bookDao(): BookDao
@@ -15,7 +23,6 @@ abstract class BookDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: BookDatabase? = null
 
-        // T02 — adds currentWordIndex column to existing installs
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
@@ -32,6 +39,8 @@ abstract class BookDatabase : RoomDatabase() {
                     "orbreader.db"
                 )
                 .addMigrations(MIGRATION_1_2)
+                // If migration fails, delete the DB and start over (Dev Only!)
+                .fallbackToDestructiveMigration() 
                 .build()
                 .also { INSTANCE = it }
             }
