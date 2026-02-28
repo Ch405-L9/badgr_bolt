@@ -52,14 +52,14 @@ fun ReaderScreen(
     ) { padding ->
 
         if (state.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@Scaffold
         }
 
         if (state.words.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("No words found for this book.")
             }
             return@Scaffold
