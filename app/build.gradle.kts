@@ -91,6 +91,7 @@ dependencies {
     implementation(libs.gson)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.coil.compose)
 
     // Cover image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
