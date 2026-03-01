@@ -2,22 +2,34 @@ package com.badgr.orbreader.ui.reader
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.ui.components.OrpWordDisplay
+import com.badgr.orbreader.ui.theme.ReaderColors
 
+/**
+ * Phase 2: Reader Screen UI Pass.
+ * Features a clean, centered RSVP view with a fixed focal anchor.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
@@ -27,9 +39,9 @@ fun ReaderScreen(
 ) {
     LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
 
-    val state     by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsState()
     val bookTitle by viewModel.bookTitle.collectAsState()
-    val showOrp   by viewModel.showOrpColor.collectAsState()
+    val showOrp by viewModel.showOrpColor.collectAsState()
 
     BackHandler {
         viewModel.saveProgress()
@@ -37,30 +49,36 @@ fun ReaderScreen(
     }
 
     Scaffold(
+        containerColor = ReaderColors.background,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(bookTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = bookTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = ReaderColors.textWarm,
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 },
-                navigationIcon = {
+                actions = {
                     IconButton(onClick = { viewModel.saveProgress(); onBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Reader",
+                            tint = ReaderColors.textWarm
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ReaderColors.background
+                )
             )
         }
     ) { padding ->
-
         if (state.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
-        if (state.words.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No words found for this book.")
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = ReaderColors.orpFocal)
             }
             return@Scaffold
         }
@@ -69,67 +87,148 @@ fun ReaderScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .background(ReaderColors.background),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.weight(0.5f))
-
-            // ── ORP word display ──────────────────────────────────────────
+            // ── RSVP Word Area ─────────────────────────────────────────────
             Box(
-                modifier         = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                // Guide line — thin blue rule at vertical center
-                Canvas(Modifier.fillMaxSize()) {
+                // Fixed Vertical Guide Lines (Top and Bottom of focal area)
+                Canvas(modifier = Modifier.size(width = 40.dp, height = 120.dp)) {
+                    val strokeWidth = 2.dp.toPx()
+                    val lineLength = 15.dp.toPx()
+                    
+                    // Top guide
                     drawLine(
-                        color       = Color(0xFF0D1BFF),
-                        start       = Offset(0f, size.height / 2f),
-                        end         = Offset(size.width, size.height / 2f),
-                        strokeWidth = 1.dp.toPx()
+                        color = ReaderColors.orpFocal,
+                        start = Offset(size.width / 2, 0f),
+                        end = Offset(size.width / 2, lineLength),
+                        strokeWidth = strokeWidth
+                    )
+                    
+                    // Bottom guide
+                    drawLine(
+                        color = ReaderColors.orpFocal,
+                        start = Offset(size.width / 2, size.height - lineLength),
+                        end = Offset(size.width / 2, size.height),
+                        strokeWidth = strokeWidth
                     )
                 }
+
                 OrpWordDisplay(
-                    word         = state.currentWord,
-                    fontSize     = 48.sp,
+                    word = state.currentWord,
+                    fontSize = 52.sp,
                     showOrpColor = showOrp
                 )
             }
 
-            Spacer(Modifier.weight(0.5f))
-
-            // ── Progress ──────────────────────────────────────────────────
-            Column(Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                    Text("${state.currentIndex + 1} / ${state.words.size}",
-                         style = MaterialTheme.typography.labelSmall)
-                    Text("${state.wpm} WPM",
-                         style = MaterialTheme.typography.labelSmall)
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ── Controls ──────────────────────────────────────────────────
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment     = Alignment.CenterVertically
+            // ── Bottom Controls ────────────────────────────────────────────
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = ReaderColors.background,
+                tonalElevation = 4.dp
             ) {
-                OutlinedButton(onClick = { viewModel.adjustWpm(-25) }) { Text("− Speed") }
-                FloatingActionButton(onClick = viewModel::togglePlayPause) {
-                    Icon(Icons.Filled.PlayArrow,
-                         contentDescription = if (state.isPlaying) "Pause" else "Play")
-                }
-                OutlinedButton(onClick = { viewModel.adjustWpm(+25) }) { Text("+ Speed") }
-            }
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Progress Indicator (Text)
+                    Text(
+                        text = "${state.currentIndex + 1} / ${state.words.size}",
+                        color = ReaderColors.textDimmed,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(Modifier.height(32.dp))
+                    // Main Controls: Back | Play/Pause | Forward
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { viewModel.skipSeconds(-5) },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.SkipPrevious,
+                                contentDescription = "Back",
+                                tint = ReaderColors.textWarm,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(32.dp))
+
+                        LargeFloatingActionButton(
+                            onClick = viewModel::togglePlayPause,
+                            containerColor = ReaderColors.orpFocal,
+                            contentColor = ReaderColors.background,
+                            shape = MaterialTheme.shapes.extraLarge
+                        ) {
+                            Icon(
+                                imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(32.dp))
+
+                        IconButton(
+                            onClick = { viewModel.skipSeconds(5) },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.SkipNext,
+                                contentDescription = "Forward",
+                                tint = ReaderColors.textWarm,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Speed Controls: - | WPM | +
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.adjustWpm(-25) },
+                            modifier = Modifier.width(100.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.textWarm)
+                        ) {
+                            Text("− 25", fontWeight = FontWeight.Bold)
+                        }
+
+                        Text(
+                            text = "${state.wpm} WPM",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ReaderColors.orpFocal,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Black
+                        )
+
+                        OutlinedButton(
+                            onClick = { viewModel.adjustWpm(25) },
+                            modifier = Modifier.width(100.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.textWarm)
+                        ) {
+                            Text("+ 25", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
         }
     }
 }

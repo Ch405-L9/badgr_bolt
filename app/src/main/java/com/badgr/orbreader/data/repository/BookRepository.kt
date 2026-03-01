@@ -8,6 +8,8 @@ import com.badgr.orbreader.data.local.BookEntity
 import com.badgr.orbreader.data.model.Book
 import com.badgr.orbreader.data.model.FileType
 import com.badgr.orbreader.data.remote.ApiClient
+import com.badgr.orbreader.util.CoverExtractor
+import com.badgr.orbreader.util.EpubMetadata
 import com.badgr.orbreader.util.WordTokenizer
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -20,9 +22,6 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
-/**
- * Sealed result type returned from import operations.
- */
 sealed class ImportResult {
     data class Success(val book: Book) : ImportResult()
     data class Error(val message: String) : ImportResult()
@@ -34,20 +33,21 @@ class BookRepository(
 ) {
     private val gson = Gson()
 
-    // ── Public API ────────────────────────────────────────────────────────────
-
-    /** Reactive list of all books, newest first. */
     val books: Flow<List<Book>> = bookDao.getAllBooks().map { list ->
         list.map { it.toDomain() }
     }
 
-    /** Import a TXT file: read locally → tokenize → save. */
     suspend fun importTxt(uri: Uri, fileName: String): ImportResult =
         withContext(Dispatchers.IO) {
             try {
                 val text = readTextFromUri(context.contentResolver, uri)
                 val words = WordTokenizer.tokenize(text)
-                val book = Book(title = fileName, fileType = FileType.TXT, wordCount = words.size)
+                val book = Book(
+                    title     = fileName,
+                    fileType  = FileType.TXT,
+                    wordCount = words.size,
+                    coverPath = null
+                )
                 saveBook(book, words)
                 ImportResult.Success(book)
             } catch (e: Exception) {
@@ -55,7 +55,6 @@ class BookRepository(
             }
         }
 
-    /** Import a PDF or EPUB file: upload to backend → tokenize → save. */
     suspend fun importRemote(
         uri: Uri,
         fileName: String,
@@ -85,7 +84,36 @@ class BookRepository(
             }
 
             val words = WordTokenizer.tokenize(body.text)
-            val book = Book(title = fileName, fileType = fileType, wordCount = words.size)
+
+            val tempId = java.util.UUID.randomUUID().toString()
+
+            // ── Cover + metadata extraction ────────────────────────────────
+            val coverPath: String?
+            val displayTitle: String
+
+            when (fileType) {
+                FileType.EPUB -> {
+                    coverPath    = CoverExtractor.fromEpub(context, tempId, bytes)
+                    val meta     = EpubMetadata.extract(bytes)
+                    displayTitle = meta.title?.takeIf { it.isNotBlank() } ?: fileName
+                }
+                FileType.PDF -> {
+                    val tmp  = File(context.cacheDir, "$tempId.pdf").also { it.writeBytes(bytes) }
+                    coverPath    = CoverExtractor.fromPdf(context, tempId, tmp).also { tmp.delete() }
+                    displayTitle = fileName
+                }
+                else -> {
+                    coverPath    = null
+                    displayTitle = fileName
+                }
+            }
+
+            val book = Book(
+                title     = displayTitle,
+                fileType  = fileType,
+                wordCount = words.size,
+                coverPath = coverPath
+            )
             saveBook(book, words)
             ImportResult.Success(book)
 
@@ -94,7 +122,6 @@ class BookRepository(
         }
     }
 
-    /** Load the word list for a book from internal storage. */
     suspend fun loadWords(bookId: String): List<String> = withContext(Dispatchers.IO) {
         val file = wordFile(bookId)
         if (!file.exists()) return@withContext emptyList()
@@ -103,20 +130,17 @@ class BookRepository(
         gson.fromJson(json, type) ?: emptyList()
     }
 
-    /** Delete a book and its word file. */
     suspend fun deleteBook(book: Book) = withContext(Dispatchers.IO) {
         bookDao.deleteBookById(book.id)
         wordFile(book.id).delete()
+        book.coverPath?.let { File(it).delete() }
     }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
 
     private suspend fun saveBook(book: Book, words: List<String>) {
         wordFile(book.id).writeText(gson.toJson(words))
         bookDao.insertBook(BookEntity.fromDomain(book))
     }
 
-    /** Each book's word list lives in a JSON file named by its id. */
     private fun wordFile(bookId: String): File =
         File(context.filesDir, "words_$bookId.json")
 

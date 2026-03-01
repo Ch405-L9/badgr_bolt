@@ -11,35 +11,70 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.badgr.orbreader.ui.theme.ReaderColors
 import com.badgr.orbreader.util.OrpEngine
 
-private val ORP_BLUE    = Color(0xFF0D1BFF)
-private val LEFT_GRAY   = Color(0xFF808080)
-private val RIGHT_WHITE = Color(0xFFFFFFFF)
-
+/**
+ * Centered RSVP/ORP word display.
+ * 
+ * This component ensures the Optimal Recognition Point (ORP) character 
+ * is always positioned at the exact horizontal center of the container.
+ * We use Monospaced font and fixed-width side boxes to anchor the eye.
+ */
 @Composable
 fun OrpWordDisplay(
     word: String,
     fontSize: TextUnit = 48.sp,
-    showOrpColor: Boolean = true
+    showOrpColor: Boolean = true,
+    fontFamily: FontFamily = FontFamily.Monospace // Monospace is critical for perfect alignment
 ) {
-    val segments   = OrpEngine.splitWordForOrp(word)
-    val fontFamily = FontFamily.Monospace
-    val leftColor  = if (showOrpColor) LEFT_GRAY  else RIGHT_WHITE
-    val orpColor   = if (showOrpColor) ORP_BLUE   else RIGHT_WHITE
+    val segments = OrpEngine.splitWordForOrp(word)
+    
+    // Use Cyan/Teal for focus per BADGR Bolt UX requirements
+    val orpHighlight = if (showOrpColor) ReaderColors.orpFocal else ReaderColors.textWarm
+    val sideColor    = ReaderColors.textWarm.copy(alpha = 0.8f)
 
     Row(
         modifier              = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.CenterEnd) {
-            Text(segments.left, color = leftColor, fontSize = fontSize, fontFamily = fontFamily)
+        // Left Segment: Anchored to the right of this box (adjacent to ORP)
+        Box(
+            modifier         = Modifier.weight(1f), 
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Text(
+                text       = segments.left,
+                color      = sideColor,
+                fontSize   = fontSize,
+                fontFamily = fontFamily,
+                maxLines   = 1
+            )
         }
-        Text(segments.orpChar, color = orpColor, fontSize = fontSize,
-             fontFamily = fontFamily, fontWeight = FontWeight.Bold)
-        Box(modifier = Modifier.width(200.dp), contentAlignment = Alignment.CenterStart) {
-            Text(segments.right, color = RIGHT_WHITE, fontSize = fontSize, fontFamily = fontFamily)
+
+        // The Anchor: The ORP character itself, exactly in the middle
+        Text(
+            text       = segments.orpChar,
+            color      = orpHighlight,
+            fontSize   = fontSize,
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold,
+            maxLines   = 1
+        )
+
+        // Right Segment: Anchored to the left of this box (adjacent to ORP)
+        Box(
+            modifier         = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text       = segments.right,
+                color      = sideColor,
+                fontSize   = fontSize,
+                fontFamily = fontFamily,
+                maxLines   = 1
+            )
         }
     }
 }
