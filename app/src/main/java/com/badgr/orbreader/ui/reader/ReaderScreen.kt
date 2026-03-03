@@ -18,7 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,10 +25,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.ui.components.OrpWordDisplay
 import com.badgr.orbreader.ui.theme.ReaderColors
 
-/**
- * Phase 2: Reader Screen UI Pass.
- * Features a clean, centered RSVP view with a fixed focal anchor.
- */
+private val ORP_COLORS = listOf(
+    Color(0xFF00CED1),   // 0 cyan-teal (default)
+    Color(0xFF4CAF50),   // 1 green
+    Color(0xFFFFC107),   // 2 amber
+    Color(0xFFE040FB),   // 3 purple
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
@@ -41,7 +43,9 @@ fun ReaderScreen(
 
     val state by viewModel.state.collectAsState()
     val bookTitle by viewModel.bookTitle.collectAsState()
-    val showOrp by viewModel.showOrpColor.collectAsState()
+    
+    // Collect persistent user preferences
+    val userPrefs by viewModel.userPrefs.collectAsState()
 
     BackHandler {
         viewModel.saveProgress()
@@ -97,22 +101,21 @@ fun ReaderScreen(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                // Fixed Vertical Guide Lines (Top and Bottom of focal area)
+                // Fixed Vertical Guide Lines
                 Canvas(modifier = Modifier.size(width = 40.dp, height = 120.dp)) {
                     val strokeWidth = 2.dp.toPx()
                     val lineLength = 15.dp.toPx()
+                    val guideColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] }
                     
-                    // Top guide
                     drawLine(
-                        color = ReaderColors.orpFocal,
+                        color = guideColor,
                         start = Offset(size.width / 2, 0f),
                         end = Offset(size.width / 2, lineLength),
                         strokeWidth = strokeWidth
                     )
                     
-                    // Bottom guide
                     drawLine(
-                        color = ReaderColors.orpFocal,
+                        color = guideColor,
                         start = Offset(size.width / 2, size.height - lineLength),
                         end = Offset(size.width / 2, size.height),
                         strokeWidth = strokeWidth
@@ -121,8 +124,9 @@ fun ReaderScreen(
 
                 OrpWordDisplay(
                     word = state.currentWord,
-                    fontSize = 52.sp,
-                    showOrpColor = showOrp
+                    fontSize = userPrefs.fontSize.sp, // NOW DYNAMIC
+                    showOrpColor = userPrefs.showOrpColor, // NOW DYNAMIC
+                    orpColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] } // NOW DYNAMIC
                 )
             }
 
@@ -137,7 +141,6 @@ fun ReaderScreen(
                         .padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Progress Indicator (Text)
                     Text(
                         text = "${state.currentIndex + 1} / ${state.words.size}",
                         color = ReaderColors.textDimmed,
@@ -147,29 +150,20 @@ fun ReaderScreen(
                     
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Main Controls: Back | Play/Pause | Forward
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            onClick = { viewModel.skipSeconds(-5) },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.SkipPrevious,
-                                contentDescription = "Back",
-                                tint = ReaderColors.textWarm,
-                                modifier = Modifier.size(36.dp)
-                            )
+                        IconButton(onClick = { viewModel.skipSeconds(-5) }, modifier = Modifier.size(56.dp)) {
+                            Icon(Icons.Default.SkipPrevious, "Back", tint = ReaderColors.textWarm, modifier = Modifier.size(36.dp))
                         }
 
                         Spacer(modifier = Modifier.width(32.dp))
 
                         LargeFloatingActionButton(
                             onClick = viewModel::togglePlayPause,
-                            containerColor = ReaderColors.orpFocal,
+                            containerColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] },
                             contentColor = ReaderColors.background,
                             shape = MaterialTheme.shapes.extraLarge
                         ) {
@@ -182,22 +176,13 @@ fun ReaderScreen(
 
                         Spacer(modifier = Modifier.width(32.dp))
 
-                        IconButton(
-                            onClick = { viewModel.skipSeconds(5) },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.SkipNext,
-                                contentDescription = "Forward",
-                                tint = ReaderColors.textWarm,
-                                modifier = Modifier.size(36.dp)
-                            )
+                        IconButton(onClick = { viewModel.skipSeconds(5) }, modifier = Modifier.size(56.dp)) {
+                            Icon(Icons.Default.SkipNext, "Forward", tint = ReaderColors.textWarm, modifier = Modifier.size(36.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Speed Controls: - | WPM | +
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,7 +199,7 @@ fun ReaderScreen(
                         Text(
                             text = "${state.wpm} WPM",
                             style = MaterialTheme.typography.titleMedium,
-                            color = ReaderColors.orpFocal,
+                            color = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] },
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Black
                         )

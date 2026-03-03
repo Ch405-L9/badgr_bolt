@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 sealed class LibraryUiState {
-    object Idle : LibraryUiState()
+    data object Idle : LibraryUiState()
     data class Converting(val fileName: String) : LibraryUiState()
     data class Error(val message: String) : LibraryUiState()
 }
@@ -31,30 +31,28 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Idle)
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
-    fun importTxt(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importTxt(uri, fileName)
+    fun importTxt(uri: Uri, name: String)   = launch(name) { repo.importTxt(uri, name) }
+    fun importPdf(uri: Uri, name: String)   = launch(name) { repo.importRemote(uri, name, FileType.PDF,   "application/pdf") }
+    fun importEpub(uri: Uri, name: String)  = launch(name) { repo.importRemote(uri, name, FileType.EPUB,  "application/epub+zip") }
+    fun importDocx(uri: Uri, name: String)  = launch(name) {
+        repo.importRemote(
+            uri, name, FileType.DOCX,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    }
+    fun importImage(uri: Uri, name: String) = launch(name) {
+        repo.importRemote(uri, name, FileType.IMAGE, "image/*")
     }
 
-    fun importPdf(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importRemote(uri, fileName, FileType.PDF, "application/pdf")
-    }
+    fun deleteBook(book: Book) = viewModelScope.launch { repo.deleteBook(book) }
+    fun clearError()           { _uiState.value = LibraryUiState.Idle }
 
-    fun importEpub(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importRemote(uri, fileName, FileType.EPUB, "application/epub+zip")
-    }
-
-    fun deleteBook(book: Book) = viewModelScope.launch {
-        repo.deleteBook(book)
-    }
-
-    fun clearError() { _uiState.value = LibraryUiState.Idle }
-
-    private fun launchImport(fileName: String, block: suspend () -> ImportResult) {
+    private fun launch(fileName: String, block: suspend () -> ImportResult) {
         viewModelScope.launch {
             _uiState.value = LibraryUiState.Converting(fileName)
-            _uiState.value = when (val result = block()) {
+            _uiState.value = when (val r = block()) {
                 is ImportResult.Success -> LibraryUiState.Idle
-                is ImportResult.Error   -> LibraryUiState.Error(result.message)
+                is ImportResult.Error   -> LibraryUiState.Error(r.message)
             }
         }
     }

@@ -1,0 +1,47 @@
+# BACKLOG: BADGR Bolt
+
+Phase 2 & 3 Development Tasks
+
+---
+
+## FEATURE: ADVANCED FILE SUPPORT
+- [ ] TASK-201: IMAGE OCR Integration
+  - What: Wire the image/* picker to the backend /convert endpoint for Tesseract-based text extraction.
+  - Acceptance: Done when an uploaded photo of text loads as an RSVP stream in the reader.
+- [ ] TASK-202: PDF/EPUB Cover Extraction
+  - What: Automatically extract the first page of a PDF or the EPUB manifest image for the library thumbnail.
+  - Acceptance: Done when imported documents show a unique cover instead of the default icon.
+
+---
+
+## FEATURE: ACCOUNTS & CLOUD SYNC
+- [ ] TASK-301: Firebase Auth Setup
+  - What: Implement Email/Password sign-up and sign-in screens.
+  - Acceptance: Done when a user can create an account and log in.
+- [ ] TASK-302: Firestore Sync Logic
+  - What: Implement CloudSyncManager.kt to push library items and reading progress to Firestore users/{uid}/library/.
+  - Acceptance: Done when progress saved on one "device" (emulator) appears after sign-in on another.
+
+---
+
+## FEATURE: TEXT-TO-SPEECH
+- [ ] TASK-401: TTS Synchronized Playback
+  - What: Implement TextToSpeechManager.kt using Android TTS to speak each word in sync with the RSVP display.
+  - Acceptance: Done when enabling TTS causes the app to read aloud at the speed matching current WPM.
+
+---
+
+## FEATURE: UX/UI POLISH
+- [ ] TASK-501: Light/Dark Dynamic Mode
+  - What: Refactor ReaderColors.kt and MainActivity.kt to support a full-screen high-contrast light mode.
+  - Acceptance: Done when toggling system theme flips the Library and Settings to a light-friendly palette.
+- [ ] TASK-502: Accessibility Audit
+  - What: Add contentDescription to all interactive icons and verify 48dp minimum touch targets.
+  - Acceptance: Done when Android Accessibility Scanner returns 0 critical warnings.
+
+---
+
+## FEATURE: LEGAL & RELEASE
+- [ ] TASK-601: Privacy Policy & Data Safety
+  - What: Finalize the in-app Privacy Policy link and Play Console Data Safety form.
+  - Acceptance: Done when the app is compliant with Google Play's 2024 policy updates.

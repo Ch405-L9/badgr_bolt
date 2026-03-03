@@ -19,19 +19,18 @@ import com.badgr.orbreader.util.OrpEngine
  * 
  * This component ensures the Optimal Recognition Point (ORP) character 
  * is always positioned at the exact horizontal center of the container.
- * We use Monospaced font and fixed-width side boxes to anchor the eye.
  */
 @Composable
 fun OrpWordDisplay(
     word: String,
     fontSize: TextUnit = 48.sp,
     showOrpColor: Boolean = true,
-    fontFamily: FontFamily = FontFamily.Monospace // Monospace is critical for perfect alignment
+    orpColor: Color = ReaderColors.orpFocal, // NOW CUSTOMIZABLE
+    fontFamily: FontFamily = FontFamily.Monospace 
 ) {
     val segments = OrpEngine.splitWordForOrp(word)
     
-    // Use Cyan/Teal for focus per BADGR Bolt UX requirements
-    val orpHighlight = if (showOrpColor) ReaderColors.orpFocal else ReaderColors.textWarm
+    val orpHighlight = if (showOrpColor) orpColor else ReaderColors.textWarm
     val sideColor    = ReaderColors.textWarm.copy(alpha = 0.8f)
 
     Row(
@@ -39,7 +38,6 @@ fun OrpWordDisplay(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        // Left Segment: Anchored to the right of this box (adjacent to ORP)
         Box(
             modifier         = Modifier.weight(1f), 
             contentAlignment = Alignment.CenterEnd
@@ -53,7 +51,6 @@ fun OrpWordDisplay(
             )
         }
 
-        // The Anchor: The ORP character itself, exactly in the middle
         Text(
             text       = segments.orpChar,
             color      = orpHighlight,
@@ -63,7 +60,6 @@ fun OrpWordDisplay(
             maxLines   = 1
         )
 
-        // Right Segment: Anchored to the left of this box (adjacent to ORP)
         Box(
             modifier         = Modifier.weight(1f),
             contentAlignment = Alignment.CenterStart

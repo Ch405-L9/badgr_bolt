@@ -71,9 +71,10 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
-    
-    // Add the XML Material Components library to resolve theme resource linking
     implementation(libs.google.material)
+
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
 
     debugImplementation(libs.androidx.ui.tooling)
 
@@ -91,7 +92,6 @@ dependencies {
     implementation(libs.gson)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.coil.compose)
 
     // Cover image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
