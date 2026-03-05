@@ -6,8 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
@@ -15,22 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.ui.components.OrpWordDisplay
 import com.badgr.orbreader.ui.theme.ReaderColors
-
-private val ORP_COLORS = listOf(
-    Color(0xFF00CED1),   // 0 cyan-teal (default)
-    Color(0xFF4CAF50),   // 1 green
-    Color(0xFFFFC107),   // 2 amber
-    Color(0xFFE040FB),   // 3 purple
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,11 +31,9 @@ fun ReaderScreen(
 ) {
     LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
 
-    val state by viewModel.state.collectAsState()
+    val state     by viewModel.state.collectAsState()
     val bookTitle by viewModel.bookTitle.collectAsState()
-    
-    // Collect persistent user preferences
-    val userPrefs by viewModel.userPrefs.collectAsState()
+    val showOrp   by viewModel.showOrpColor.collectAsState()
 
     BackHandler {
         viewModel.saveProgress()
@@ -58,11 +46,11 @@ fun ReaderScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = bookTitle,
+                        text     = bookTitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = ReaderColors.textWarm,
-                        style = MaterialTheme.typography.titleMedium
+                        color    = ReaderColors.textWarm,
+                        style    = MaterialTheme.typography.titleMedium
                     )
                 },
                 actions = {
@@ -74,9 +62,7 @@ fun ReaderScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ReaderColors.background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
             )
         }
     ) { padding ->
@@ -94,124 +80,90 @@ fun ReaderScreen(
                 .background(ReaderColors.background),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── RSVP Word Area ─────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                // Fixed Vertical Guide Lines
                 Canvas(modifier = Modifier.size(width = 40.dp, height = 120.dp)) {
                     val strokeWidth = 2.dp.toPx()
-                    val lineLength = 15.dp.toPx()
-                    val guideColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] }
-                    
+                    val lineLength  = 15.dp.toPx()
                     drawLine(
-                        color = guideColor,
-                        start = Offset(size.width / 2, 0f),
-                        end = Offset(size.width / 2, lineLength),
+                        color       = ReaderColors.orpFocal,
+                        start       = Offset(size.width / 2, 0f),
+                        end         = Offset(size.width / 2, lineLength),
                         strokeWidth = strokeWidth
                     )
-                    
                     drawLine(
-                        color = guideColor,
-                        start = Offset(size.width / 2, size.height - lineLength),
-                        end = Offset(size.width / 2, size.height),
+                        color       = ReaderColors.orpFocal,
+                        start       = Offset(size.width / 2, size.height - lineLength),
+                        end         = Offset(size.width / 2, size.height),
                         strokeWidth = strokeWidth
                     )
                 }
-
                 OrpWordDisplay(
-                    word = state.currentWord,
-                    fontSize = userPrefs.fontSize.sp, // NOW DYNAMIC
-                    showOrpColor = userPrefs.showOrpColor, // NOW DYNAMIC
-                    orpColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] } // NOW DYNAMIC
+                    word         = state.currentWord,
+                    fontSize     = 52.sp,
+                    showOrpColor = showOrp
                 )
             }
 
-            // ── Bottom Controls ────────────────────────────────────────────
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = ReaderColors.background,
+                modifier      = Modifier.fillMaxWidth(),
+                color         = ReaderColors.background,
                 tonalElevation = 4.dp
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                    modifier            = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "${state.currentIndex + 1} / ${state.words.size}",
+                        text  = "${state.currentIndex + 1} / ${state.words.size}",
                         color = ReaderColors.textDimmed,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontFamily = FontFamily.Monospace
+                        style = MaterialTheme.typography.bodySmall
                     )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress    = { state.progress },
+                        modifier    = Modifier.fillMaxWidth(),
+                        color       = ReaderColors.progressBar,
+                        trackColor  = ReaderColors.guideLine
+                    )
+                    Spacer(Modifier.height(24.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { viewModel.skipSeconds(-5) }, modifier = Modifier.size(56.dp)) {
-                            Icon(Icons.Default.SkipPrevious, "Back", tint = ReaderColors.textWarm, modifier = Modifier.size(36.dp))
+                        IconButton(onClick = { viewModel.skipSeconds(-10) }) {
+                            Icon(Icons.Default.SkipPrevious, contentDescription = "Back 10s", tint = ReaderColors.textWarm)
                         }
-
-                        Spacer(modifier = Modifier.width(32.dp))
-
-                        LargeFloatingActionButton(
-                            onClick = viewModel::togglePlayPause,
-                            containerColor = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] },
-                            contentColor = ReaderColors.background,
-                            shape = MaterialTheme.shapes.extraLarge
+                        IconButton(onClick = { viewModel.adjustWpm(-25) }) {
+                            Icon(Icons.Default.SkipPrevious, contentDescription = "-25 WPM", tint = ReaderColors.textDimmed)
+                        }
+                        FloatingActionButton(
+                            onClick           = { viewModel.togglePlayPause() },
+                            containerColor    = ReaderColors.orpFocal,
+                            contentColor      = ReaderColors.background
                         ) {
                             Icon(
-                                imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (state.isPlaying) "Pause" else "Play",
-                                modifier = Modifier.size(40.dp)
+                                imageVector        = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (state.isPlaying) "Pause" else "Play"
                             )
                         }
-
-                        Spacer(modifier = Modifier.width(32.dp))
-
-                        IconButton(onClick = { viewModel.skipSeconds(5) }, modifier = Modifier.size(56.dp)) {
-                            Icon(Icons.Default.SkipNext, "Forward", tint = ReaderColors.textWarm, modifier = Modifier.size(36.dp))
+                        IconButton(onClick = { viewModel.adjustWpm(25) }) {
+                            Icon(Icons.Default.SkipNext, contentDescription = "+25 WPM", tint = ReaderColors.textDimmed)
+                        }
+                        IconButton(onClick = { viewModel.skipSeconds(10) }) {
+                            Icon(Icons.Default.SkipNext, contentDescription = "Forward 10s", tint = ReaderColors.textWarm)
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = { viewModel.adjustWpm(-25) },
-                            modifier = Modifier.width(100.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.textWarm)
-                        ) {
-                            Text("− 25", fontWeight = FontWeight.Bold)
-                        }
-
-                        Text(
-                            text = "${state.wpm} WPM",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = ORP_COLORS.getOrElse(userPrefs.orpColorIndex) { ORP_COLORS[0] },
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Black
-                        )
-
-                        OutlinedButton(
-                            onClick = { viewModel.adjustWpm(25) },
-                            modifier = Modifier.width(100.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.textWarm)
-                        ) {
-                            Text("+ 25", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text  = "${state.wpm} WPM",
+                        color = ReaderColors.orpFocal,
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
         }

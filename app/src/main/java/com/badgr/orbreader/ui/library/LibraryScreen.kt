@@ -9,16 +9,25 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.badgr.orbreader.ui.theme.ReaderColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,89 +38,60 @@ fun LibraryScreen(
     val books   by viewModel.books.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    // ── File pickers ──────────────────────────────────────────────────────
-    val txtPicker   = rememberFilePicker("text/plain")             { u, n -> viewModel.importTxt(u, n)  }
-    val pdfPicker   = rememberFilePicker("application/pdf")        { u, n -> viewModel.importPdf(u, n)  }
-    val epubPicker  = rememberFilePicker("application/epub+zip")   { u, n -> viewModel.importEpub(u, n) }
-    val docxPicker  = rememberFilePicker("application/vnd.openxmlformats-officedocument.wordprocessingml.document") 
-                                                                    { u, n -> viewModel.importDocx(u, n) }
-    val imagePicker = rememberFilePicker("image/*")               { u, n -> viewModel.importImage(u, n) }
+    val txtPicker  = rememberFilePicker("text/plain")           { uri, name -> viewModel.importTxt(uri, name) }
+    val pdfPicker  = rememberFilePicker("application/pdf")      { uri, name -> viewModel.importPdf(uri, name) }
+    val epubPicker = rememberFilePicker("application/epub+zip") { uri, name -> viewModel.importEpub(uri, name) }
 
-    // ── Error dialog ──────────────────────────────────────────────────────
     if (uiState is LibraryUiState.Error) {
         AlertDialog(
             onDismissRequest = viewModel::clearError,
             title = { Text("Import failed") },
             text  = { Text((uiState as LibraryUiState.Error).message) },
-            confirmButton   = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+            confirmButton = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
         )
     }
 
     Scaffold(
-        containerColor = ReaderColors.background,
-        topBar = {
-            TopAppBar(
-                title  = { Text("BADGR Bolt Library", color = ReaderColors.textWarm) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
-            )
-        }
+        topBar = { TopAppBar(title = { Text("OrbReader Library") }) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Import buttons row 1 ───────────────────────────────────────
             Row(
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ImportBtn("TXT",  Modifier.weight(1f), "Import text file")   { txtPicker.launch("text/plain") }
-                ImportBtn("PDF",  Modifier.weight(1f), "Import PDF file")    { pdfPicker.launch("application/pdf") }
-                ImportBtn("EPUB", Modifier.weight(1f), "Import EPUB file")   { epubPicker.launch("application/epub+zip") }
-            }
-            // ── Import buttons row 2 ───────────────────────────────────────
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ImportBtn("DOCX",  Modifier.weight(1f), "Import Word document") {
-                    docxPicker.launch("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-                }
-                ImportBtn("Image", Modifier.weight(1f), "Import image for OCR") {
-                    imagePicker.launch("image/*")
-                }
+                ImportButton(label = "TXT",  modifier = Modifier.weight(1f)) { txtPicker.launch("text/plain") }
+                ImportButton(label = "PDF",  modifier = Modifier.weight(1f)) { pdfPicker.launch("application/pdf") }
+                ImportButton(label = "EPUB", modifier = Modifier.weight(1f)) { epubPicker.launch("application/epub+zip") }
             }
 
             if (uiState is LibraryUiState.Converting) {
+                val name = (uiState as LibraryUiState.Converting).fileName
                 Row(
-                    Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color       = ReaderColors.orpFocal
-                    )
-                    Text(
-                        "Converting \"${(uiState as LibraryUiState.Converting).fileName}\"…",
-                        color = ReaderColors.textDimmed
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(text = "Converting \"$name\"\u2026", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
-            HorizontalDivider(color = ReaderColors.guideLine)
+            HorizontalDivider()
 
             if (books.isEmpty()) {
-                Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("No books yet. Import a file above.", color = ReaderColors.textDimmed)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text  = "No books yet. Import a TXT, PDF, or EPUB file.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             } else {
                 LazyColumn {
@@ -121,7 +101,7 @@ fun LibraryScreen(
                             onClick  = { onOpenBook(book.id) },
                             onDelete = { viewModel.deleteBook(book) }
                         )
-                        HorizontalDivider(color = ReaderColors.guideLine.copy(alpha = 0.3f))
+                        HorizontalDivider()
                     }
                 }
             }
@@ -130,44 +110,37 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun ImportBtn(
-    label       : String,
-    modifier    : Modifier,
-    description : String,
-    onClick     : () -> Unit
-) {
-    OutlinedButton(
-        onClick  = onClick,
-        modifier = modifier.semantics { contentDescription = description },
-        colors   = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
-    ) { Text("+ $label") }
+private fun ImportButton(label: String, modifier: Modifier, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = modifier) { Text(text = "+ $label") }
 }
 
 @Composable
 private fun rememberFilePicker(
     mimeType: String,
     onPicked: (uri: Uri, fileName: String) -> Unit
-): ManagedLauncher {
+): ManagedActivityResultLauncherWrapper {
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val name = resolveFileName(context.contentResolver, uri) ?: "document"
+        val name = resolveFileName(context.contentResolver, uri) ?: "Unknown"
         onPicked(uri, name)
     }
-    return remember(launcher) { ManagedLauncher(launcher) }
+    return remember(launcher) { ManagedActivityResultLauncherWrapper(launcher) }
 }
 
-private class ManagedLauncher(private val l: ActivityResultLauncher<String>) {
-    fun launch(mime: String) = l.launch(mime)
+private class ManagedActivityResultLauncherWrapper(
+    private val launcher: ActivityResultLauncher<String>
+) {
+    fun launch(mimeType: String) = launcher.launch(mimeType)
 }
 
 private fun resolveFileName(resolver: ContentResolver, uri: Uri): String? {
-    resolver.query(uri, null, null, null, null)?.use { c ->
-        if (c.moveToFirst()) {
-            val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (idx >= 0) return c.getString(idx)
+    resolver.query(uri, null, null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0) return cursor.getString(idx)
         }
     }
     return uri.lastPathSegment

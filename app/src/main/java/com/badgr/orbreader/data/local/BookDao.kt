@@ -9,6 +9,9 @@ interface BookDao {
     @Query("SELECT * FROM books ORDER BY createdAt DESC")
     fun getAllBooks(): Flow<List<BookEntity>>
 
+    @Query("SELECT * FROM books ORDER BY createdAt DESC")
+    suspend fun getAllBooks_suspend(): List<BookEntity>
+
     @Query("SELECT * FROM books WHERE id = :id")
     suspend fun getBookById(id: String): BookEntity?
 

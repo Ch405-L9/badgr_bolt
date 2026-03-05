@@ -16,3 +16,4 @@ capture.keystore
 *.docx
 *.pdf
 *.txt
+*.OrbReaderBackend

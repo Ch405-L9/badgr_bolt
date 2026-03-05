@@ -32,3 +32,59 @@
 
 # ── Coil ─────────────────────────────────────────────────────────────────────
 -dontwarn coil.**
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# Firebase Auth
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.firebase.auth.** { *; }
+
+# Firestore
+-keep class com.google.firebase.firestore.** { *; }
+
+# Crashlytics
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends java.lang.Exception
+-keep class com.google.firebase.crashlytics.** { *; }
+-dontwarn com.google.firebase.crashlytics.**
+
+# Google Play Billing (for 2.3.x milestone)
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+
+# CloudSyncManager and ProGate — never obfuscate entitlement logic
+-keep class com.badgr.orbreader.sync.** { *; }
+-keep class com.badgr.orbreader.billing.** { *; }
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# Firebase Auth
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.firebase.auth.** { *; }
+
+# Firestore
+-keep class com.google.firebase.firestore.** { *; }
+
+# Crashlytics
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends java.lang.Exception
+-keep class com.google.firebase.crashlytics.** { *; }
+-dontwarn com.google.firebase.crashlytics.**
+
+# Google Play Billing (for 2.3.x milestone)
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+
+# CloudSyncManager and ProGate — never obfuscate entitlement logic
+-keep class com.badgr.orbreader.sync.** { *; }
+-keep class com.badgr.orbreader.billing.** { *; }

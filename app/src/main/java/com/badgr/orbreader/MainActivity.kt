@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -23,12 +24,14 @@ import com.badgr.orbreader.ui.library.LibraryScreen
 import com.badgr.orbreader.ui.reader.ReaderScreen
 import com.badgr.orbreader.ui.stats.StatsScreen
 import com.badgr.orbreader.ui.settings.SettingsScreen
+import com.badgr.orbreader.ui.account.AccountScreen
 import com.badgr.orbreader.ui.theme.OrbreaderTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Library  : Screen("library",  "Library",  Icons.Default.CollectionsBookmark)
     data object Stats    : Screen("stats",    "Stats",    Icons.Default.QueryStats)
     data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    data object Account  : Screen("account",  "Account",  Icons.Default.Person)
 }
 
 class MainActivity : ComponentActivity() {
@@ -47,7 +50,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         if (showBottomNav) {
                             NavigationBar {
-                                val items = listOf(Screen.Library, Screen.Stats, Screen.Settings)
+                                val items = listOf(Screen.Library, Screen.Stats, Screen.Settings, Screen.Account)
                                 items.forEach { screen ->
                                     val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                                     NavigationBarItem(
@@ -95,6 +98,7 @@ class MainActivity : ComponentActivity() {
 
                             composable(Screen.Stats.route) { StatsScreen() }
                             composable(Screen.Settings.route) { SettingsScreen() }
+                            composable(Screen.Account.route)  { AccountScreen() }
                         }
                     }
                 }
