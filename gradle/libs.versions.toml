@@ -16,9 +16,9 @@ coroutines                          = "1.9.0"
 material                            = "1.12.0"
 datastore                           = "1.1.2"
 firebase-bom                        = "33.7.0"
+billing                             = "7.0.0"
 google-services                     = "4.4.2"
 firebase-crashlytics-plugin         = "3.0.2"
-# Testing Versions
 junit                               = "4.13.2"
 androidx-test-ext-junit             = "1.2.1"
 espresso-core                       = "3.6.1"
@@ -72,6 +72,9 @@ firebase-auth                       = { group = "com.google.firebase",     name 
 firebase-firestore                  = { group = "com.google.firebase",     name = "firebase-firestore-ktx" }
 firebase-crashlytics                = { group = "com.google.firebase",     name = "firebase-crashlytics-ktx" }
 firebase-analytics                  = { group = "com.google.firebase",     name = "firebase-analytics-ktx" }
+
+# Billing
+billing                             = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 
 # Testing
 junit                               = { group = "junit",                   name = "junit",                           version.ref = "junit" }

@@ -30,8 +30,17 @@ android {
         schemaDirectory("$projectDir/schemas")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile     = file("../badgr_release.jks")
+            storePassword = providers.gradleProperty("STORE_PASSWORD").orNull ?: System.getenv("STORE_PASSWORD") ?: ""
+            keyAlias      = "badgr_bolt"
+            keyPassword   = providers.gradleProperty("KEY_PASSWORD").orNull ?: System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -102,4 +111,5 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
+    implementation(libs.billing)
 }

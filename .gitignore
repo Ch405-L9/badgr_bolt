@@ -1,19 +1,72 @@
-# IDE files
-*.iml
-.idea
-.gradle
-local.properties
+# ============================================================
+# BADGR Bolt — .gitignore
+# BADGRTechnologies LLC
+# ============================================================
+
+# --- Android Build Outputs ---
+*.apk
+*.aab
+*.ap_
+*.dex
 build/
-capture.keystore
+app/build/
+*/build/
 
-# Local files
-*.log
+# --- Gradle ---
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+local.properties
 
-# Mac files
+# --- IDE — Android Studio / IntelliJ ---
+*.iml
+.idea/
+*.classpath
+*.project
+*.swp
+*~
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- Kotlin ---
+.kotlin/
+
+# --- Secrets and Credentials (NEVER COMMIT) ---
+google-services.json
+google-services-staging.json
+*.jks
+*.keystore
+keystore.properties
+gradle.properties
+.badgr_env
+
+# --- Firebase / Google ---
+crashlytics.properties
+fabric.properties
+
+# --- OS ---
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V7
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
 
-# Internal Project Documents (Not for public repo)
+# --- Internal / Non-public project documents ---
 *.docx
 *.pdf
-*.txt
+SHN_*.json
 *.OrbReaderBackend
+
+# --- Log files ---
+*.log
+*.hprof
+
+# --- Misc build artifacts ---
+app/src/main/Run
+app/src/main/Unknown
+app/.gitignore
