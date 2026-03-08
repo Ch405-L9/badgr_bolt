@@ -8,32 +8,43 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [BookEntity::class],
-    version = 3,
+    entities  = [BookEntity::class, ReadingSessionEntity::class],
+    version   = 4,
     exportSchema = true
 )
 abstract class BookDatabase : RoomDatabase() {
 
     abstract fun bookDao(): BookDao
+    abstract fun readingSessionDao(): ReadingSessionDao
 
     companion object {
         @Volatile private var INSTANCE: BookDatabase? = null
 
-        // 1 → 2: added currentWordIndex
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "ALTER TABLE books ADD COLUMN currentWordIndex INTEGER NOT NULL DEFAULT 0"
-                )
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN currentWordIndex INTEGER NOT NULL DEFAULT 0")
             }
         }
 
-        // 2 → 3: added coverPath (nullable TEXT)
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
-                    "ALTER TABLE books ADD COLUMN coverPath TEXT"
-                )
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN coverPath TEXT")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS reading_sessions (
+                        id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        bookId          TEXT    NOT NULL,
+                        bookTitle       TEXT    NOT NULL,
+                        wordsRead       INTEGER NOT NULL,
+                        durationSeconds INTEGER NOT NULL,
+                        avgWpm          INTEGER NOT NULL,
+                        timestamp       INTEGER NOT NULL
+                    )
+                """.trimIndent())
             }
         }
 
@@ -44,8 +55,7 @@ abstract class BookDatabase : RoomDatabase() {
                     BookDatabase::class.java,
                     "orbreader.db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                .fallbackToDestructiveMigration()   // dev safety net only
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
                 .also { INSTANCE = it }
             }

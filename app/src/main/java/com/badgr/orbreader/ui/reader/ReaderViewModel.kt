@@ -1,10 +1,12 @@
 package com.badgr.orbreader.ui.reader
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.badgr.orbreader.data.local.BookDatabase
 import com.badgr.orbreader.data.repository.BookRepository
+import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -59,6 +61,12 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val index = _state.value.currentIndex
         viewModelScope.launch {
             db.bookDao().updateProgress(currentBookId, index)
+            try {
+                CloudSyncManager.pushProgress(currentBookId, index)
+                Log.d("ReaderViewModel", "Progress synced: word $index for book $currentBookId")
+            } catch (e: Exception) {
+                Log.w("ReaderViewModel", "Progress sync failed (non-fatal): ${e.localizedMessage}")
+            }
         }
     }
 
@@ -76,16 +84,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
     }
 
-    /**
-     * Skip forward or backward by [seconds] seconds based on current WPM.
-     * e.g. at 150 WPM, skipSeconds(10) jumps ahead 25 words.
-     * e.g. at 300 WPM, skipSeconds(-10) goes back 50 words.
-     */
     fun skipSeconds(seconds: Int) {
-        val wpm          = _state.value.wpm
-        val wordsToSkip  = (wpm * abs(seconds) / 60f).roundToInt().coerceAtLeast(1)
-        val delta        = if (seconds > 0) wordsToSkip else -wordsToSkip
-        val newIndex     = (_state.value.currentIndex + delta)
+        val wpm         = _state.value.wpm
+        val wordsToSkip = (wpm * abs(seconds) / 60f).roundToInt().coerceAtLeast(1)
+        val delta       = if (seconds > 0) wordsToSkip else -wordsToSkip
+        val newIndex    = (_state.value.currentIndex + delta)
             .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
         _state.update { it.copy(currentIndex = newIndex) }
     }

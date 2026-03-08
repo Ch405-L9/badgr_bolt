@@ -37,28 +37,17 @@ fun LibraryScreen(
 ) {
     val books   by viewModel.books.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
-    // ── File pickers ──────────────────────────────────────────────────────────
-    val txtPicker = rememberFilePicker("text/plain") { uri, name ->
-        viewModel.importTxt(uri, name)
-    }
-    val pdfPicker = rememberFilePicker("application/pdf") { uri, name ->
-        viewModel.importPdf(uri, name)
-    }
-    val epubPicker = rememberFilePicker("application/epub+zip") { uri, name ->
-        viewModel.importEpub(uri, name)
-    }
+    val txtPicker  = rememberFilePicker("text/plain")           { uri, name -> viewModel.importTxt(uri, name) }
+    val pdfPicker  = rememberFilePicker("application/pdf")      { uri, name -> viewModel.importPdf(uri, name) }
+    val epubPicker = rememberFilePicker("application/epub+zip") { uri, name -> viewModel.importEpub(uri, name) }
 
-    // ── Error dialog ──────────────────────────────────────────────────────────
     if (uiState is LibraryUiState.Error) {
         AlertDialog(
             onDismissRequest = viewModel::clearError,
             title = { Text("Import failed") },
-            text = { Text((uiState as LibraryUiState.Error).message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::clearError) { Text("OK") }
-            }
+            text  = { Text((uiState as LibraryUiState.Error).message) },
+            confirmButton = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
         )
     }
 
@@ -70,25 +59,17 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Import buttons ─────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ImportButton(label = "TXT", modifier = Modifier.weight(1f)) {
-                    txtPicker.launch("text/plain")
-                }
-                ImportButton(label = "PDF", modifier = Modifier.weight(1f)) {
-                    pdfPicker.launch("application/pdf")
-                }
-                ImportButton(label = "EPUB", modifier = Modifier.weight(1f)) {
-                    epubPicker.launch("application/epub+zip")
-                }
+                ImportButton(label = "TXT",  modifier = Modifier.weight(1f)) { txtPicker.launch("text/plain") }
+                ImportButton(label = "PDF",  modifier = Modifier.weight(1f)) { pdfPicker.launch("application/pdf") }
+                ImportButton(label = "EPUB", modifier = Modifier.weight(1f)) { epubPicker.launch("application/epub+zip") }
             }
 
-            // ── Converting indicator ───────────────────────────────────────
             if (uiState is LibraryUiState.Converting) {
                 val name = (uiState as LibraryUiState.Converting).fileName
                 Row(
@@ -98,27 +79,17 @@ fun LibraryScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Text(
-                        text = "Converting \"$name\"…",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(text = "Converting \"$name\"\u2026", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
             HorizontalDivider()
 
-            // ── Book list ──────────────────────────────────────────────────
             if (books.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "No books yet. Import a TXT, PDF, or EPUB file.",
+                        text  = "No books yet. Import a TXT, PDF, or EPUB file.",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -126,8 +97,8 @@ fun LibraryScreen(
                 LazyColumn {
                     items(books, key = { it.id }) { book ->
                         BookRow(
-                            book = book,
-                            onClick = { onOpenBook(book.id) },
+                            book     = book,
+                            onClick  = { onOpenBook(book.id) },
                             onDelete = { viewModel.deleteBook(book) }
                         )
                         HorizontalDivider()
@@ -138,20 +109,10 @@ fun LibraryScreen(
     }
 }
 
-// ── Sub-composables ───────────────────────────────────────────────────────────
-
 @Composable
-private fun ImportButton(
-    label: String,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    OutlinedButton(onClick = onClick, modifier = modifier) {
-        Text(text = "+ $label")
-    }
+private fun ImportButton(label: String, modifier: Modifier, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = modifier) { Text(text = "+ $label") }
 }
-
-// ── Helper: file picker launcher ──────────────────────────────────────────────
 
 @Composable
 private fun rememberFilePicker(

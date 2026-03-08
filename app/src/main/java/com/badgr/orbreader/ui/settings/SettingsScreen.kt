@@ -1,6 +1,6 @@
 package com.badgr.orbreader.ui.settings
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -10,23 +10,39 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.BuildConfig
+import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.ui.theme.ReaderColors
+
+private val ORP_COLORS = listOf(
+    Color(0xFF00CED1),   // 0 cyan-teal (default)
+    Color(0xFF4CAF50),   // 1 green
+    Color(0xFFFFC107),   // 2 amber
+    Color(0xFFE040FB),   // 3 purple
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
-    var wpm by remember { mutableStateOf(300) }
-    var fontSize by remember { mutableStateOf(24) }
-    var selectedColor by remember { mutableStateOf(ReaderColors.orpFocal) }
+fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
+    val prefs by vm.prefs.collectAsState()
 
     Scaffold(
         containerColor = ReaderColors.background,
         topBar = {
             TopAppBar(
-                title = { Text("Settings", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "Settings",
+                        color      = ReaderColors.textWarm,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
             )
         }
@@ -36,115 +52,203 @@ fun SettingsScreen() {
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
+
+            // ── Default Reading Speed ─────────────────────────────────────
             item {
-                // ── Reading Speed Selection ──────────────────────────────────
-                Column {
-                    Text("Reading Speed (WPM)", color = ReaderColors.textWarm, style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(8.dp))
+                SettingSection(title = "Default Reading Speed") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedButton(onClick = { if (wpm > 50) wpm -= 25 }, colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)) {
-                            Text("-", fontSize = 20.sp)
-                        }
-                        Text("$wpm", color = ReaderColors.textWarm, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                        OutlinedButton(onClick = { wpm += 25 }, colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)) {
-                            Text("+", fontSize = 20.sp)
-                        }
+                        OutlinedButton(
+                            onClick = { vm.setWpm(prefs.defaultWpm - 25) },
+                            colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
+                            modifier = Modifier.semantics { contentDescription = "Decrease WPM" }
+                        ) { Text("−") }
+
+                        Text(
+                            "${prefs.defaultWpm} WPM",
+                            color      = ReaderColors.textWarm,
+                            fontSize   = 22.sp,
+                            fontWeight = FontWeight.Black
+                        )
+
+                        OutlinedButton(
+                            onClick = { vm.setWpm(prefs.defaultWpm + 25) },
+                            colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
+                            modifier = Modifier.semantics { contentDescription = "Increase WPM" }
+                        ) { Text("+") }
                     }
                 }
             }
 
+            // ── Font Size ─────────────────────────────────────────────────
             item {
-                // ── Display Size ─────────────────────────────────────────────
-                Column {
-                    Text("Font Size (pt)", color = ReaderColors.textWarm, style = MaterialTheme.typography.titleSmall)
+                SettingSection(title = "Font Size  —  ${prefs.fontSize}pt") {
                     Slider(
-                        value = fontSize.toFloat(),
-                        onValueChange = { fontSize = it.toInt() },
-                        valueRange = 12f..64f,
-                        colors = SliderDefaults.colors(thumbColor = ReaderColors.orpFocal, activeTrackColor = ReaderColors.orpFocal)
+                        value        = prefs.fontSize.toFloat(),
+                        onValueChange = { vm.setFontSize(it.toInt()) },
+                        valueRange   = 28f..72f,
+                        colors = SliderDefaults.colors(
+                            thumbColor       = ReaderColors.orpFocal,
+                            activeTrackColor = ReaderColors.orpFocal
+                        ),
+                        modifier = Modifier.semantics {
+                            contentDescription = "Font size ${prefs.fontSize} points"
+                        }
                     )
-                    Text("${fontSize}pt", color = ReaderColors.textDimmed, fontSize = 14.sp)
                 }
             }
 
+            // ── ORP Color Highlight ───────────────────────────────────────
             item {
-                // ── ORP Color Palette ────────────────────────────────────────
-                Column {
-                    Text("ORP Highlight Color", color = ReaderColors.textWarm, style = MaterialTheme.typography.titleSmall)
-                    Spacer(Modifier.height(12.dp))
+                SettingSection(title = "ORP Highlight Color") {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ColorChip(ReaderColors.orpFocal, selectedColor == ReaderColors.orpFocal) { selectedColor = it }
-                        ColorChip(Color(0xFFE91E63), selectedColor == Color(0xFFE91E63)) { selectedColor = it }
-                        ColorChip(Color(0xFF4CAF50), selectedColor == Color(0xFF4CAF50)) { selectedColor = it }
-                        ColorChip(Color(0xFFFFC107), selectedColor == Color(0xFFFFC107)) { selectedColor = it }
+                        ORP_COLORS.forEachIndexed { idx, color ->
+                            ColorChip(
+                                color      = color,
+                                isSelected = prefs.orpColorIndex == idx,
+                                onClick    = { vm.setOrpColorIndex(idx) },
+                                label      = "ORP color option $idx"
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Show ORP highlight",
+                            color = ReaderColors.textWarm,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Switch(
+                            checked         = prefs.showOrpColor,
+                            onCheckedChange = { vm.setShowOrpColor(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor  = ReaderColors.background,
+                                checkedTrackColor  = ReaderColors.orpFocal
+                            ),
+                            modifier = Modifier.semantics {
+                                contentDescription = if (prefs.showOrpColor)
+                                    "ORP highlight on" else "ORP highlight off"
+                            }
+                        )
                     }
                 }
             }
 
+            // ── Supported Formats ─────────────────────────────────────────
             item {
-                // ── File Support Section ─────────────────────────────────────
+                SettingSection(title = "Supported Formats") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("TXT", "PDF", "EPUB", "DOCX", "IMAGE").forEach { fmt ->
+                            Surface(
+                                color = ReaderColors.orpFocal.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    fmt,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    color    = ReaderColors.orpFocal,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Pro Status ────────────────────────────────────────────────
+            item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = ReaderColors.cardSurface,
-                    shape = RoundedCornerShape(12.dp)
+                    color    = if (ProGate.isPro)
+                                   ReaderColors.orpFocal.copy(alpha = 0.12f)
+                               else Color(0xFF2C2040),
+                    shape    = RoundedCornerShape(12.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Supported Formats", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            FormatBadge("TXT")
-                            FormatBadge("PDF")
-                            FormatBadge("EPUB")
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (ProGate.isPro) "BADGR Bolt Pro — Active"
+                                else "Upgrade to Bolt Pro",
+                                color      = if (ProGate.isPro) ReaderColors.orpFocal
+                                             else ReaderColors.textWarm,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (ProGate.isPro) "All features unlocked"
+                                else "Stats, cloud sync, unlimited library",
+                                color  = ReaderColors.textDimmed,
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (!ProGate.isPro) {
+                            OutlinedButton(
+                                onClick = { /* billing flow — coming soon */ },
+                                colors  = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = ReaderColors.orpFocal
+                                )
+                            ) { Text("Unlock") }
                         }
                     }
                 }
             }
 
+            // ── App Version ───────────────────────────────────────────────
             item {
-                // ── Pro Banner Stub ──────────────────────────────────────────
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(80.dp),
-                    color = Color(0xFF2C2C2C),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("Upgrade to Bolt Pro", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
-                    }
-                }
+                Text(
+                    "BADGR Bolt v1.0 (build 1)",
+                    color    = ReaderColors.textDimmed,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-fun ColorChip(color: Color, isSelected: Boolean, onClick: (Color) -> Unit) {
-    Surface(
-        modifier = Modifier.size(40.dp),
-        onClick = { onClick(color) },
-        color = color,
-        shape = CircleShape,
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Color.White) else null
-    ) {}
+private fun SettingSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column {
+        Text(
+            title,
+            color  = ReaderColors.textWarm,
+            style  = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(10.dp))
+        content()
+    }
 }
 
 @Composable
-fun FormatBadge(label: String) {
+private fun ColorChip(
+    color: Color,
+    isSelected: Boolean,
+    label: String,
+    onClick: () -> Unit
+) {
     Surface(
-        color = ReaderColors.badgrBlue.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            label, 
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
-            color = ReaderColors.textWarm, 
-            fontSize = 12.sp, 
-            fontWeight = FontWeight.Bold
-        )
-    }
+        modifier = Modifier
+            .size(40.dp)
+            .semantics { contentDescription = label },
+        onClick  = onClick,
+        color    = color,
+        shape    = CircleShape,
+        border   = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Color.White) else null
+    ) {}
 }

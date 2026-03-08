@@ -2,13 +2,16 @@ package com.badgr.orbreader.ui.library
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.badgr.orbreader.data.local.BookDatabase
+import com.badgr.orbreader.data.local.BookEntity
 import com.badgr.orbreader.data.model.Book
 import com.badgr.orbreader.data.model.FileType
 import com.badgr.orbreader.data.repository.BookRepository
 import com.badgr.orbreader.data.repository.ImportResult
+import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -20,9 +23,10 @@ sealed class LibraryUiState {
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val db   = BookDatabase.getInstance(application)
     private val repo = BookRepository(
         context = application,
-        bookDao = BookDatabase.getInstance(application).bookDao()
+        bookDao = db.bookDao()
     )
 
     val books: StateFlow<List<Book>> = repo.books
@@ -52,9 +56,25 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private fun launchImport(fileName: String, block: suspend () -> ImportResult) {
         viewModelScope.launch {
             _uiState.value = LibraryUiState.Converting(fileName)
-            _uiState.value = when (val result = block()) {
+            val result = block()
+            _uiState.value = when (result) {
                 is ImportResult.Success -> LibraryUiState.Idle
                 is ImportResult.Error   -> LibraryUiState.Error(result.message)
+            }
+            // ── Cloud sync: push book to Firestore if user is signed in ───
+            if (result is ImportResult.Success) {
+                val uid = CloudSyncManager.currentUser?.uid
+                if (uid != null) {
+                    try {
+                        val entity = db.bookDao().getBookById(result.book.id)
+                        if (entity != null) {
+                            CloudSyncManager.pushBook(uid, entity)
+                            Log.d("LibraryViewModel", "Pushed book to Firestore: ${result.book.title}")
+                        }
+                    } catch (e: Exception) {
+                        Log.w("LibraryViewModel", "Firestore push failed (non-fatal): ${e.localizedMessage}")
+                    }
+                }
             }
         }
     }

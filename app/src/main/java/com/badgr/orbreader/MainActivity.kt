@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -23,12 +24,14 @@ import com.badgr.orbreader.ui.library.LibraryScreen
 import com.badgr.orbreader.ui.reader.ReaderScreen
 import com.badgr.orbreader.ui.stats.StatsScreen
 import com.badgr.orbreader.ui.settings.SettingsScreen
-import com.badgr.orbreader.ui.theme.ReaderColors
+import com.badgr.orbreader.ui.account.AccountScreen
+import com.badgr.orbreader.ui.theme.OrbreaderTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Library  : Screen("library",  "Library",  Icons.Default.CollectionsBookmark)
     data object Stats    : Screen("stats",    "Stats",    Icons.Default.QueryStats)
     data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    data object Account  : Screen("account",  "Account",  Icons.Default.Person)
 }
 
 class MainActivity : ComponentActivity() {
@@ -36,24 +39,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
+            OrbreaderTheme {
                 val navController = rememberNavController()
-                
-                // Use explicit state collection to ensure the 'destination' property is visible to the compiler
                 val navBackStackEntryState = navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntryState.value?.destination
 
-                // Hide bottom nav when in the Reader Screen for maximum focus
                 val showBottomNav = currentDestination?.route?.startsWith("reader") != true
 
                 Scaffold(
                     bottomBar = {
                         if (showBottomNav) {
-                            NavigationBar(
-                                containerColor = ReaderColors.background,
-                                contentColor = ReaderColors.orpFocal
-                            ) {
-                                val items = listOf(Screen.Library, Screen.Stats, Screen.Settings)
+                            NavigationBar {
+                                val items = listOf(Screen.Library, Screen.Stats, Screen.Settings, Screen.Account)
                                 items.forEach { screen ->
                                     val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                                     NavigationBarItem(
@@ -62,20 +59,11 @@ class MainActivity : ComponentActivity() {
                                         selected = isSelected,
                                         onClick = {
                                             navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    saveState = true
-                                                }
+                                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
-                                        },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = ReaderColors.orpFocal,
-                                            selectedTextColor = ReaderColors.orpFocal,
-                                            indicatorColor = ReaderColors.orpFocal.copy(alpha = 0.1f),
-                                            unselectedIconColor = ReaderColors.textDimmed,
-                                            unselectedTextColor = ReaderColors.textDimmed
-                                        )
+                                        }
                                     )
                                 }
                             }
@@ -84,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Surface(
                         modifier = Modifier.padding(innerPadding),
-                        color = ReaderColors.background
+                        color = MaterialTheme.colorScheme.background
                     ) {
                         NavHost(
                             navController = navController,
@@ -108,13 +96,9 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            composable(Screen.Stats.route) {
-                                StatsScreen()
-                            }
-
-                            composable(Screen.Settings.route) {
-                                SettingsScreen()
-                            }
+                            composable(Screen.Stats.route) { StatsScreen() }
+                            composable(Screen.Settings.route) { SettingsScreen() }
+                            composable(Screen.Account.route)  { AccountScreen() }
                         }
                     }
                 }
