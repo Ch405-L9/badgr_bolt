@@ -371,7 +371,7 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             // ── App Version ───────────────────────────────────────────────
             item {
                 Text(
-                    "BADGR Bolt v2.5.1 (build 7)",
+                    "BADGR Bolt v2.5.2 (build 8)",
                     color    = ReaderColors.textDimmed,
                     fontSize = 11.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
