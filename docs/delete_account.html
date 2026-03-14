@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete Account — BADGR Bolt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0A192F;
+      --bg-card:  #112240;
+      --bg-rule:  #1d3458;
+      --cyan:     #00CED1;
+      --cyan-dim: rgba(0, 206, 209, 0.12);
+      --text:     #E8E2D0;
+      --text-dim: #8892B0;
+      --mono:     'Space Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+      --warn:     #FF6B6B;
+      --warn-dim: rgba(255, 107, 107, 0.10);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.75;
+      min-height: 100vh;
+      padding: 0 1rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 4rem 0 6rem;
+    }
+
+    header {
+      margin-bottom: 3.5rem;
+      border-bottom: 1px solid var(--bg-rule);
+      padding-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      border-radius: 3px;
+      padding: 3px 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+    }
+
+    h1 span { color: var(--warn); }
+
+    .meta {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+    }
+
+    section { margin-bottom: 2.75rem; }
+
+    h2 {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cyan);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--bg-rule);
+    }
+
+    p { margin-bottom: 0.85rem; }
+    p:last-child { margin-bottom: 0; }
+
+    a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+    a:hover { border-color: var(--cyan); }
+
+    /* Steps */
+    .steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .step {
+      counter-increment: step;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-radius: 6px;
+      padding: 1rem 1.2rem 1rem 1rem;
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      align-items: start;
+      gap: 0.75rem;
+    }
+
+    .step-num {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--cyan);
+      content: counter(step);
+      background: var(--cyan-dim);
+      border-radius: 4px;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-body { font-size: 0.92rem; color: var(--text); }
+    .step-body strong { font-weight: 600; color: var(--text); }
+    .step-body .path {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      padding: 2px 7px;
+      border-radius: 3px;
+    }
+
+    /* Warning card */
+    .warn-card {
+      background: var(--warn-dim);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-left: 3px solid var(--warn);
+      border-radius: 6px;
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .warn-card .warn-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--warn);
+      margin-bottom: 0.5rem;
+    }
+
+    .warn-card p { font-size: 0.92rem; }
+
+    /* Data table */
+    .data-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem; }
+
+    .data-row {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-radius: 6px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.5fr;
+      overflow: hidden;
+    }
+
+    .data-cell {
+      padding: 0.65rem 1rem;
+      font-size: 0.85rem;
+      border-right: 1px solid var(--bg-rule);
+    }
+
+    .data-cell:last-child { border-right: none; }
+    .data-cell.header {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .deleted { color: var(--warn); font-weight: 500; }
+    .retained { color: var(--text-dim); }
+
+    /* Contact card */
+    .contact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-left: 3px solid var(--cyan);
+      border-radius: 6px;
+      padding: 1.1rem 1.4rem;
+    }
+
+    .contact-card .contact-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-card p { font-size: 0.92rem; }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--bg-rule);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 560px) {
+      .data-row { grid-template-columns: 1fr; }
+      .data-cell { border-right: none; border-bottom: 1px solid var(--bg-rule); }
+      .data-cell:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">BADGRTechnologies LLC</div>
+    <h1>Delete Account<br/><span>BADGR Bolt</span></h1>
+    <p class="meta">Last updated: 2026-03-14</p>
+  </header>
+
+  <!-- Overview -->
+  <section>
+    <h2>Overview</h2>
+    <p>You can request deletion of your BADGR Bolt account and all associated data at any time. This page explains how to request deletion and exactly what data is removed.</p>
+    <p>If you use BADGR Bolt as a free user without an account, no data is stored on our servers and no action is required.</p>
+  </section>
+
+  <!-- Warning -->
+  <section>
+    <h2>Before You Delete</h2>
+    <div class="warn-card">
+      <div class="warn-title">⚠ This action is permanent</div>
+      <p>Account deletion cannot be undone. Your cloud-synced library, reading progress, and account credentials will be permanently removed and cannot be recovered.</p>
+    </div>
+    <p>Local data stored on your device — imported books, covers, and reading position — is not affected by account deletion and remains on your device until you uninstall the app.</p>
+  </section>
+
+  <!-- How to delete -->
+  <section>
+    <h2>How to Delete Your Account</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Open <strong>BADGR Bolt</strong> on your Android device.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Tap the <span class="path">Account</span> tab in the bottom navigation bar.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Confirm you are signed in to the account you wish to delete.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          If you cannot access the app, email us at <strong>privacy@badgrtechnologies.com</strong> <!-- USER_MUST_SUPPLY -->
+          with the subject line <span class="path">Account Deletion Request</span> and the email address associated with your account.
+          We will process your request within 30 days.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What gets deleted -->
+  <section>
+    <h2>What Data Is Deleted</h2>
+    <div class="data-grid">
+      <div class="data-row">
+        <div class="data-cell header">Data Type</div>
+        <div class="data-cell header">Status</div>
+        <div class="data-cell header">Retention Period</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Email address</div>
+        <div class="data-cell deleted">Deleted</div>
+        <div class="data-cell">Immediately on deletion</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Cloud-synced books</div>
+        <div class="data-cell deleted">Deleted</div>
+        <div class="data-cell">Immediately on deletion</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Reading progress</div>
+        <div class="data-cell deleted">Deleted</div>
+        <div class="data-cell">Immediately on deletion</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Crash logs</div>
+        <div class="data-cell retained">Retained</div>
+        <div class="data-cell">Anonymous — cannot be attributed to your account. Retained for stability analysis.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-cell">Analytics events</div>
+        <div class="data-cell retained">Retained</div>
+        <div class="data-cell">Anonymous — cannot be attributed to your account.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section>
+    <h2>Contact</h2>
+    <div class="contact-card">
+      <div class="contact-title">BADGRTechnologies LLC</div>
+      <p>
+        Email: <strong>privacy@badgrtechnologies.com</strong> <!-- USER_MUST_SUPPLY --><br/>
+        GitHub: <a href="https://github.com/Ch405-L9/badgr_bolt" target="_blank" rel="noopener">github.com/Ch405-L9/badgr_bolt</a><br/>
+        Privacy Policy: <a href="privacy_policy.html">View Privacy Policy</a>
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 BADGRTechnologies LLC. All rights reserved.</span>
+    <span>BADGR Bolt · Android</span>
+  </footer>
+
+</div>
+</body>
+</html>
