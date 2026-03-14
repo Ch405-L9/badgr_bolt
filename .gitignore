@@ -79,3 +79,5 @@ commit_and_build.sh
 *.md.bak
 BADGR\ Bolt_*.md
 BADGR_BOLT_RELEASE_STRATEGY*.md
+.aider*
+.env

@@ -1,3 +1,31 @@
+## [2.3.6-pre] — 2026-03-14
+### Fixed
+- CloudSyncManager: removed requirePro() from signUp() and signIn() — account
+  creation is free; Pro gates cloud sync only, not authentication
+- LibraryViewModel: free book limit (5) now enforced before import; returns
+  BookLimitReached state when exceeded
+- LibraryScreen: upgrade dialog shown when free limit reached — explains Pro
+  benefits and offers upgrade path
+- StatsScreen: free users now see an upgrade CTA card; Bolt Rank and achievement
+  grid gated behind ProGate.isPro
+### Pre-tag checklist
+- Test account creation as free user
+- Test book limit enforcement at 5 books
+- Test upgrade prompt appearance
+- Test license tester purchase flow
+- Test Pro features unlock after purchase
+
+## [2.3.6] — 2026-03-14
+### Changed
+- ProGate.kt: PRIVATE_ROLLOUT_ALL_OPEN flipped to false
+- Pro entitlement now enforced via verified Google Play purchase only
+- Free users see upgrade prompts on Pro-gated features
+### Release gate
+- Regression tested on Play Console license tester before tag
+- This commit marks billing going live
+### Next Milestone
+- 2.5.1: Punctuation pauses
+
 ## [2.5.0] — 2026-03-14
 ### Added
 - ChunkWordDisplay.kt: composable for 1-4 word chunk reading
