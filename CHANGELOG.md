@@ -1,3 +1,23 @@
+## [2.5.0] — 2026-03-14
+### Added
+- ChunkWordDisplay.kt: composable for 1-4 word chunk reading
+  - Single word: full ORP display (unchanged)
+  - Multi-word: first word gets ORP focal treatment, context words dimmed at 85% size
+- ReaderViewModel: chunkSize StateFlow from DataStore, adjustChunkSize(delta) function
+  - Playback delay scales with chunk size: showing N words takes N word-intervals
+  - Skip seconds accounts for chunk size when calculating words to jump
+- ReaderScreen: live chunk size controls (- / count / +) below WPM row
+- SettingsScreen: Default Words at a Time section (1/2/3/4 buttons) with description
+- UserPreferences: chunkSize field (default 1)
+- UserPreferencesRepository: setChunkSize(), coerced 1-4
+- SettingsViewModel: setChunkSize()
+### Changed
+- SettingsScreen: version string updated to v2.5.0 (build 6)
+- SettingsScreen: removed typographic special characters to prevent Kotlin compile issues
+### Next Milestone
+- 2.5.1: Punctuation pauses (smart slowing at . , ? !)
+- 2.5.2: Bookmarks and notes
+
 ## [2.4.4] — 2026-03-14
 ### Added
 - ReaderFonts.kt: 6-font registry combining community favourites and neurologically

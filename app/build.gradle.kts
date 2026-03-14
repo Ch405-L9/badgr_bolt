@@ -16,8 +16,8 @@ android {
         applicationId  = "com.badgr.orbreader"
         minSdk         = 26
         targetSdk      = 35
-        versionCode    = 5
-        versionName    = "2.4.4"
+        versionCode    = 6
+        versionName    = "2.5.0"
 
         buildConfigField(
             "String",

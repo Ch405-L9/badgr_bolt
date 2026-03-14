@@ -12,7 +12,6 @@ import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -37,7 +36,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         dao            = db.readingSessionDao(),
         achievementDao = db.achievementDao()
     )
-    private val prefsRepo   = UserPreferencesRepository(application)
+    private val prefsRepo = UserPreferencesRepository(application)
 
     private val _state = MutableStateFlow(ReaderUiState())
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
@@ -45,31 +44,30 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val _bookTitle = MutableStateFlow("")
     val bookTitle: StateFlow<String> = _bookTitle.asStateFlow()
 
-    /** Driven by DataStore — reflects user's saved preference in real time. */
     val showOrpColor: StateFlow<Boolean> = prefsRepo.preferences
         .map { it.showOrpColor }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    /** 0=cyan 1=green 2=amber 3=purple 4=red — saved in Settings, shown here. */
     val orpColorIndex: StateFlow<Int> = prefsRepo.preferences
         .map { it.orpColorIndex }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Font family index — 0=Mono, 1=JetBrains, 2=Literata, 3=Merriweather, 4=Atkinson, 5=OpenSans */
     val fontIndex: StateFlow<Int> = prefsRepo.preferences
         .map { it.fontIndex }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Font size in sp — saved in Settings, applied in reader. */
     val fontSize: StateFlow<Int> = prefsRepo.preferences
         .map { it.fontSize }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 40)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 46)
 
-    /** Achievement IDs newly unlocked at end of session — consumed by UI. */
+    /** 1=single word, 2/3/4=chunk reading. Sourced from DataStore. */
+    val chunkSize: StateFlow<Int> = prefsRepo.preferences
+        .map { it.chunkSize }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+
     private val _newAchievements = MutableStateFlow<List<String>>(emptyList())
     val newAchievements: StateFlow<List<String>> = _newAchievements.asStateFlow()
 
-    // ── Session tracking ──────────────────────────────────────────────────
     private var currentBookId     : String  = ""
     private var sessionStartIndex : Int     = -1
     private var sessionHasStarted : Boolean = false
@@ -85,12 +83,25 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             val entity     = db.bookDao().getBookById(bookId)
             val savedIndex = entity?.currentWordIndex ?: 0
             _bookTitle.value = entity?.title ?: ""
-            val words      = repo.loadWords(bookId)
-            // Load saved WPM from DataStore so Settings value is respected
-            val savedWpm   = prefsRepo.preferences.first().defaultWpm
+            val words    = repo.loadWords(bookId)
+            val savedWpm = prefsRepo.preferences.first().defaultWpm
             _state.update {
                 it.copy(words = words, currentIndex = savedIndex, isLoading = false, wpm = savedWpm)
             }
+        }
+    }
+
+    /**
+     * Returns the current chunk of words to display based on chunkSize.
+     * Always returns a list of exactly chunkSize items (padded with empty
+     * strings if near end of book). The ORP focal word is the first word
+     * in the chunk (index 0 of the returned list).
+     */
+    fun getCurrentChunk(): List<String> {
+        val s     = _state.value
+        val chunk = chunkSize.value
+        return (0 until chunk).map { offset ->
+            s.words.getOrElse(s.currentIndex + offset) { "" }
         }
     }
 
@@ -127,7 +138,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                         _newAchievements.value = newlyUnlocked
                     }
                 } catch (e: Exception) {
-                    Log.w("ReaderViewModel", "Session record failed: ${e.localizedMessage}")
+                    Log.w("ReaderViewModel", "Session record failed: \${e.localizedMessage}")
                 }
             }
 
@@ -140,7 +151,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 CloudSyncManager.pushProgress(currentBookId, index)
             } catch (e: Exception) {
-                Log.w("ReaderViewModel", "Progress sync failed: ${e.localizedMessage}")
+                Log.w("ReaderViewModel", "Progress sync failed: \${e.localizedMessage}")
             }
         }
     }
@@ -169,10 +180,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
     }
 
+    /** Adjust chunk size in reader (+1 or -1), clamped 1–4. */
+    fun adjustChunkSize(delta: Int) {
+        val newSize = (chunkSize.value + delta).coerceIn(1, 4)
+        viewModelScope.launch { prefsRepo.setChunkSize(newSize) }
+    }
+
     fun skipSeconds(seconds: Int) {
         if (seconds < 0) sessionRewindCount++
         val wpm         = _state.value.wpm
-        val wordsToSkip = (wpm * abs(seconds) / 60f).roundToInt().coerceAtLeast(1)
+        val chunk       = chunkSize.value
+        val wordsToSkip = (wpm * abs(seconds) / 60f).roundToInt().coerceAtLeast(chunk)
         val delta       = if (seconds > 0) wordsToSkip else -wordsToSkip
         val newIndex    = (_state.value.currentIndex + delta)
             .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
@@ -187,14 +205,16 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         playJob?.cancel()
         playJob = viewModelScope.launch {
             while (_state.value.isPlaying) {
-                val s = _state.value
+                val s     = _state.value
+                val chunk = chunkSize.value
                 if (s.currentIndex >= s.words.lastIndex) {
                     _state.update { it.copy(isPlaying = false) }
                     sessionActiveMs += System.currentTimeMillis() - lastPlayStartMs
                     break
                 }
-                delay(60_000L / s.wpm)
-                _state.update { it.copy(currentIndex = it.currentIndex + 1) }
+                // Delay scales with chunk size: showing N words takes N word-intervals
+                delay((60_000L * chunk) / s.wpm)
+                _state.update { it.copy(currentIndex = (it.currentIndex + chunk).coerceAtMost(it.words.lastIndex)) }
             }
         }
     }

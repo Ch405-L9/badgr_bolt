@@ -16,19 +16,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.billing.ProGate
-import com.badgr.orbreader.ui.theme.ReaderFonts
 import com.badgr.orbreader.data.preferences.THEME_DARK
 import com.badgr.orbreader.data.preferences.THEME_LIGHT
 import com.badgr.orbreader.data.preferences.THEME_SYSTEM
 import com.badgr.orbreader.ui.theme.ReaderColors
+import com.badgr.orbreader.ui.theme.ReaderFonts
 
-// 5 ORP colors — cyan, green, amber, purple, red
 private val ORP_COLORS = listOf(
-    Color(0xFF00CED1),   // 0 cyan-teal (default)
-    Color(0xFF4CAF50),   // 1 green
-    Color(0xFFFFC107),   // 2 amber
-    Color(0xFFE040FB),   // 3 purple
-    Color(0xFFE53935),   // 4 classic red
+    Color(0xFF00CED1),
+    Color(0xFF4CAF50),
+    Color(0xFFFFC107),
+    Color(0xFFE040FB),
+    Color(0xFFE53935),
 )
 
 private val THEME_OPTIONS = listOf("System", "Light", "Dark")
@@ -42,15 +41,13 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
         containerColor = ReaderColors.background,
         topBar = {
             TopAppBar(
-                title = {
-                    Text("Settings", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
-                },
+                title = { Text("Settings", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
             )
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
+            modifier            = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
@@ -61,23 +58,21 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             item {
                 SettingSection(title = "Default Reading Speed") {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
                             onClick  = { vm.setWpm(prefs.defaultWpm - 25) },
                             colors   = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
                             modifier = Modifier.semantics { contentDescription = "Decrease WPM" }
-                        ) { Text("−") }
-
+                        ) { Text("-") }
                         Text(
                             "${prefs.defaultWpm} WPM",
                             color      = ReaderColors.textWarm,
                             fontSize   = 22.sp,
                             fontWeight = FontWeight.Black
                         )
-
                         OutlinedButton(
                             onClick  = { vm.setWpm(prefs.defaultWpm + 25) },
                             colors   = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
@@ -87,20 +82,66 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                 }
             }
 
+            // ── Default Words at a Time ───────────────────────────────────
+            item {
+                SettingSection(title = "Default Words at a Time") {
+                    Column {
+                        Text(
+                            "Show multiple words per flash. Higher chunks train peripheral vision.",
+                            color    = ReaderColors.textDimmed,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(1, 2, 3, 4).forEach { n ->
+                                val selected = prefs.chunkSize == n
+                                OutlinedButton(
+                                    onClick  = { vm.setChunkSize(n) },
+                                    modifier = Modifier.weight(1f),
+                                    colors   = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = if (selected) ReaderColors.orpFocal.copy(alpha = 0.15f)
+                                                         else Color.Transparent,
+                                        contentColor   = if (selected) ReaderColors.orpFocal
+                                                         else ReaderColors.textDimmed
+                                    ),
+                                    border   = androidx.compose.foundation.BorderStroke(
+                                        width = if (selected) 1.5.dp else 1.dp,
+                                        color = if (selected) ReaderColors.orpFocal
+                                                else ReaderColors.textDimmed.copy(alpha = 0.4f)
+                                    )
+                                ) {
+                                    Text(
+                                        "$n",
+                                        fontSize   = 16.sp,
+                                        fontWeight = if (selected) FontWeight.Black else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "You can also adjust this live in the reader.",
+                            color    = ReaderColors.textDimmed,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
             // ── Font Size ─────────────────────────────────────────────────
             item {
-                SettingSection(title = "Font Size  —  ${prefs.fontSize}pt") {
+                SettingSection(title = "Font Size  -  ${prefs.fontSize}pt") {
                     Slider(
                         value         = prefs.fontSize.toFloat(),
                         onValueChange = { vm.setFontSize(it.toInt()) },
                         valueRange    = 24f..60f,
-                        colors = SliderDefaults.colors(
+                        colors        = SliderDefaults.colors(
                             thumbColor       = ReaderColors.orpFocal,
                             activeTrackColor = ReaderColors.orpFocal
-                        ),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Font size ${prefs.fontSize} points"
-                        }
+                        )
                     )
                 }
             }
@@ -122,17 +163,13 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Show ORP highlight",
-                            color = ReaderColors.textWarm,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("Show ORP highlight", color = ReaderColors.textWarm, style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked         = prefs.showOrpColor,
                             onCheckedChange = { vm.setShowOrpColor(it) },
-                            colors = SwitchDefaults.colors(
+                            colors          = SwitchDefaults.colors(
                                 checkedThumbColor = ReaderColors.background,
                                 checkedTrackColor = ReaderColors.orpFocal
                             )
@@ -140,7 +177,6 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                     }
                 }
             }
-
 
             // ── Reader Font ───────────────────────────────────────────────
             item {
@@ -156,12 +192,11 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                                 shape    = RoundedCornerShape(10.dp),
                                 border   = androidx.compose.foundation.BorderStroke(
                                     width = if (selected) 1.5.dp else 1.dp,
-                                    color = if (selected) ReaderColors.orpFocal
-                                            else ReaderColors.guideLine
+                                    color = if (selected) ReaderColors.orpFocal else ReaderColors.guideLine
                                 )
                             ) {
                                 Row(
-                                    modifier = Modifier
+                                    modifier              = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                     verticalAlignment     = Alignment.CenterVertically,
@@ -170,18 +205,12 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                                     Column(Modifier.weight(1f)) {
                                         Text(
                                             text       = option.label,
-                                            color      = if (selected) ReaderColors.orpFocal
-                                                         else ReaderColors.textWarm,
-                                            fontWeight = if (selected) FontWeight.Bold
-                                                         else FontWeight.Normal,
+                                            color      = if (selected) ReaderColors.orpFocal else ReaderColors.textWarm,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                             fontFamily = option.family,
                                             fontSize   = 15.sp
                                         )
-                                        Text(
-                                            text     = option.subtitle,
-                                            color    = ReaderColors.textDimmed,
-                                            fontSize = 11.sp
-                                        )
+                                        Text(text = option.subtitle, color = ReaderColors.textDimmed, fontSize = 11.sp)
                                     }
                                     if (option.isFixed) {
                                         Surface(
@@ -190,11 +219,10 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                                         ) {
                                             Text(
                                                 "MONO",
-                                                modifier      = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                color         = ReaderColors.orpFocal,
-                                                fontSize      = 9.sp,
-                                                fontWeight    = FontWeight.Bold,
-                                                letterSpacing = 1.sp
+                                                modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                color      = ReaderColors.orpFocal,
+                                                fontSize   = 9.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
@@ -208,32 +236,22 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             // ── Theme ─────────────────────────────────────────────────────
             item {
                 SettingSection(title = "App Theme") {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         THEME_OPTIONS.forEachIndexed { idx, label ->
                             val selected = prefs.themeMode == idx
                             OutlinedButton(
                                 onClick  = { vm.setThemeMode(idx) },
                                 modifier = Modifier.weight(1f),
                                 colors   = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (selected) ReaderColors.orpFocal.copy(alpha = 0.15f)
-                                                     else Color.Transparent,
-                                    contentColor   = if (selected) ReaderColors.orpFocal
-                                                     else ReaderColors.textDimmed
+                                    containerColor = if (selected) ReaderColors.orpFocal.copy(alpha = 0.15f) else Color.Transparent,
+                                    contentColor   = if (selected) ReaderColors.orpFocal else ReaderColors.textDimmed
                                 ),
-                                border = androidx.compose.foundation.BorderStroke(
+                                border   = androidx.compose.foundation.BorderStroke(
                                     width = if (selected) 1.5.dp else 1.dp,
-                                    color = if (selected) ReaderColors.orpFocal
-                                            else ReaderColors.textDimmed.copy(alpha = 0.4f)
+                                    color = if (selected) ReaderColors.orpFocal else ReaderColors.textDimmed.copy(alpha = 0.4f)
                                 )
                             ) {
-                                Text(
-                                    label,
-                                    fontSize   = 13.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                )
+                                Text(label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
                             }
                         }
                     }
@@ -243,15 +261,9 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             // ── Supported Formats ─────────────────────────────────────────
             item {
                 SettingSection(title = "Supported Formats") {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         listOf("TXT", "PDF", "EPUB", "DOCX", "IMAGE").forEach { fmt ->
-                            Surface(
-                                color = ReaderColors.orpFocal.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
+                            Surface(color = ReaderColors.orpFocal.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
                                 Text(
                                     fmt,
                                     modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -269,30 +281,25 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color    = if (ProGate.isPro) ReaderColors.orpFocal.copy(alpha = 0.12f)
-                               else Color(0xFF2C2040),
+                    color    = if (ProGate.isPro) ReaderColors.orpFocal.copy(alpha = 0.12f) else Color(0xFF2C2040),
                     shape    = RoundedCornerShape(12.dp)
                 ) {
-                    Row(
-                        modifier          = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                if (ProGate.isPro) "BADGR Bolt Pro — Active" else "Upgrade to Bolt Pro",
+                                if (ProGate.isPro) "BADGR Bolt Pro - Active" else "Upgrade to Bolt Pro",
                                 color      = if (ProGate.isPro) ReaderColors.orpFocal else ReaderColors.textWarm,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                if (ProGate.isPro) "All features unlocked"
-                                else "Stats, cloud sync, unlimited library",
+                                if (ProGate.isPro) "All features unlocked" else "Stats, cloud sync, unlimited library",
                                 color    = ReaderColors.textDimmed,
                                 fontSize = 12.sp
                             )
                         }
                         if (!ProGate.isPro) {
                             OutlinedButton(
-                                onClick = { /* billing — wired in AccountScreen */ },
+                                onClick = {},
                                 colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
                             ) { Text("Unlock") }
                         }
@@ -303,7 +310,7 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             // ── App Version ───────────────────────────────────────────────
             item {
                 Text(
-                    "BADGR Bolt v2.4.2 (build 5)",
+                    "BADGR Bolt v2.5.0 (build 6)",
                     color    = ReaderColors.textDimmed,
                     fontSize = 11.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -316,12 +323,7 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
 @Composable
 private fun SettingSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
-        Text(
-            title,
-            color      = ReaderColors.textWarm,
-            style      = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
-        )
+        Text(title, color = ReaderColors.textWarm, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(10.dp))
         content()
     }
@@ -330,13 +332,10 @@ private fun SettingSection(title: String, content: @Composable ColumnScope.() ->
 @Composable
 private fun ColorChip(color: Color, isSelected: Boolean, label: String, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier
-            .size(40.dp)
-            .semantics { contentDescription = label },
+        modifier = Modifier.size(40.dp).semantics { contentDescription = label },
         onClick  = onClick,
         color    = color,
         shape    = CircleShape,
-        border   = if (isSelected)
-            androidx.compose.foundation.BorderStroke(2.dp, Color.White) else null
+        border   = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Color.White) else null
     ) {}
 }

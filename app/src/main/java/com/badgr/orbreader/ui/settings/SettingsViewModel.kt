@@ -25,4 +25,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setOrpColorIndex(idx: Int)     = viewModelScope.launch { repo.setOrpColorIndex(idx) }
     fun setThemeMode(mode: Int)        = viewModelScope.launch { repo.setThemeMode(mode) }
     fun setFontIndex(idx: Int)         = viewModelScope.launch { repo.setFontIndex(idx) }
+    fun setChunkSize(size: Int)        = viewModelScope.launch { repo.setChunkSize(size) }
 }
