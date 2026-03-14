@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.badgr.orbreader.data.local.BookDatabase
-import com.badgr.orbreader.data.local.BookEntity
 import com.badgr.orbreader.data.model.Book
 import com.badgr.orbreader.data.model.FileType
 import com.badgr.orbreader.data.repository.BookRepository
@@ -24,10 +23,7 @@ sealed class LibraryUiState {
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db   = BookDatabase.getInstance(application)
-    private val repo = BookRepository(
-        context = application,
-        bookDao = db.bookDao()
-    )
+    private val repo = BookRepository(context = application, bookDao = db.bookDao())
 
     val books: StateFlow<List<Book>> = repo.books
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -35,21 +31,18 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Idle)
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
-    fun importTxt(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importTxt(uri, fileName)
+    fun importTxt(uri: Uri, fileName: String)   = launchImport(fileName) { repo.importTxt(uri, fileName) }
+    fun importPdf(uri: Uri, fileName: String)   = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.PDF,  "application/pdf") }
+    fun importEpub(uri: Uri, fileName: String)  = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.EPUB, "application/epub+zip") }
+    fun importDocx(uri: Uri, fileName: String)  = launchImport(fileName) {
+        repo.importRemote(
+            uri, fileName, FileType.DOCX,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
     }
+    fun importImage(uri: Uri, fileName: String) = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.IMAGE, "image/*") }
 
-    fun importPdf(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importRemote(uri, fileName, FileType.PDF, "application/pdf")
-    }
-
-    fun importEpub(uri: Uri, fileName: String) = launchImport(fileName) {
-        repo.importRemote(uri, fileName, FileType.EPUB, "application/epub+zip")
-    }
-
-    fun deleteBook(book: Book) = viewModelScope.launch {
-        repo.deleteBook(book)
-    }
+    fun deleteBook(book: Book) = viewModelScope.launch { repo.deleteBook(book) }
 
     fun clearError() { _uiState.value = LibraryUiState.Idle }
 
@@ -61,16 +54,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 is ImportResult.Success -> LibraryUiState.Idle
                 is ImportResult.Error   -> LibraryUiState.Error(result.message)
             }
-            // ── Cloud sync: push book to Firestore if user is signed in ───
             if (result is ImportResult.Success) {
                 val uid = CloudSyncManager.currentUser?.uid
                 if (uid != null) {
                     try {
                         val entity = db.bookDao().getBookById(result.book.id)
-                        if (entity != null) {
-                            CloudSyncManager.pushBook(uid, entity)
-                            Log.d("LibraryViewModel", "Pushed book to Firestore: ${result.book.title}")
-                        }
+                        if (entity != null) CloudSyncManager.pushBook(uid, entity)
                     } catch (e: Exception) {
                         Log.w("LibraryViewModel", "Firestore push failed (non-fatal): ${e.localizedMessage}")
                     }

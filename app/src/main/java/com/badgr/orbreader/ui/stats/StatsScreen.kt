@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -205,7 +207,12 @@ private fun BoltRankCard(rank: BoltRank) {
                 Text(rank.label,    fontSize = 30.sp, fontWeight = FontWeight.Black, color = ReaderColors.textWarm)
                 Text(rank.subtitle, fontSize = 12.sp, color = ReaderColors.textDimmed)
             }
-            Text(rank.emoji, fontSize = 44.sp)
+            // Use launcher icon as the rank visual
+            androidx.compose.foundation.Image(
+                painter            = painterResource(id = android.R.mipmap.sym_def_app_icon),
+                contentDescription = rank.label,
+                modifier           = Modifier.size(52.dp)
+            )
         }
     }
 }

@@ -70,3 +70,12 @@ SHN_*.json
 app/src/main/Run
 app/src/main/Unknown
 app/.gitignore
+
+# Patch and fix scripts (session working files)
+patch_*.py
+fix_*.py
+diagnose_*.py
+commit_and_build.sh
+*.md.bak
+BADGR\ Bolt_*.md
+BADGR_BOLT_RELEASE_STRATEGY*.md

@@ -1,3 +1,59 @@
+## [2.4.4] — 2026-03-14
+### Added
+- ReaderFonts.kt: 6-font registry combining community favourites and neurologically
+  optimised fonts — System Mono, JetBrains Mono, Literata, Merriweather,
+  Atkinson Hyperlegible, Open Sans
+- Font picker in Settings: each option shown in its own typeface with label,
+  subtitle, and MONO badge for fixed-width fonts
+- fontIndex persisted to DataStore via UserPreferencesRepository
+- ReaderViewModel: fontIndex StateFlow sourced from DataStore
+- ReaderScreen: currentFontFamily derived from fontIndex, passed to OrpWordDisplay
+- Google Fonts downloadable font XML declarations for all 5 non-system fonts
+- font_certs.xml: Google Fonts provider certificate array
+### Changed
+- UserPreferences: added fontIndex field (default 0 = System Mono)
+- SettingsViewModel: added setFontIndex()
+### Notes
+- Mono fonts (index 0, 1) labelled with MONO badge — best ORP focal stability
+- Variable fonts (index 2–5) more comfortable for long sessions, slight ORP shift
+- Custom font upload planned post-3.0.0
+### Next Milestone
+- 2.4.5: Wire open_book achievement on import; default WPM from Settings
+
+## [2.4.3] — 2026-03-14
+### Fixed
+- ORP color selection now correctly applied in reader: ReaderViewModel exposes
+  orpColorIndex StateFlow from DataStore; ReaderScreen maps index to Color and
+  passes it to OrpWordDisplay, guide line Canvas, progress bar, and play FAB
+- Delete confirmation dialog added to BookRow: tapping the trash icon now shows
+  an AlertDialog with book title, Cancel and Delete (red) buttons before removal
+### Changed
+- ReaderViewModel: showOrpColor and orpColorIndex both sourced from DataStore
+  via UserPreferencesRepository — changes in Settings reflected immediately in reader
+- ReaderScreen: progress bar and play FAB now use currentOrpColor for visual consistency
+### Next Milestone
+- 2.4.4: Wire open_book achievement on import
+
+## [2.4.2] — 2026-03-14
+### Added
+- Red (#E53935) added to ORP color palette as option 4
+- DOCX and IMAGE import restored to LibraryScreen via FAB + ModalBottomSheet format picker
+- Library empty state: descriptive placeholder with emoji instead of plain text
+- Settings: System / Light / Dark theme mode selector — persisted to DataStore
+- MainActivity: observes themeMode preference, overrides system dark/light accordingly
+### Changed
+- LibraryScreen: three inline import buttons replaced with single cyan FAB (cleaner UX)
+- FAB opens a bottom sheet listing all 5 formats with emoji, label, and subtitle
+- UserPreferences: added themeMode field (default = 0, system)
+- UserPreferencesRepository: added setThemeMode(), coerced 0–2
+- SettingsScreen: version string updated to v2.4.2
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred to 2.5.x)
+- TD-006: No unit tests
+- TD-007: Email verification not enforced
+### Next Milestone
+- 2.4.3: Wire open_book achievement on import; consider WPM chart in Stats
+
 ## [2.4.1] — 2026-03-14
 ### Added
 - AchievementToast.kt: auto-dismissing slide-in banner (3s) shows emoji, title,
