@@ -1,3 +1,96 @@
+## [2.4.4] — 2026-03-14
+### Added
+- ReaderFonts.kt: 6-font registry combining community favourites and neurologically
+  optimised fonts — System Mono, JetBrains Mono, Literata, Merriweather,
+  Atkinson Hyperlegible, Open Sans
+- Font picker in Settings: each option shown in its own typeface with label,
+  subtitle, and MONO badge for fixed-width fonts
+- fontIndex persisted to DataStore via UserPreferencesRepository
+- ReaderViewModel: fontIndex StateFlow sourced from DataStore
+- ReaderScreen: currentFontFamily derived from fontIndex, passed to OrpWordDisplay
+- Google Fonts downloadable font XML declarations for all 5 non-system fonts
+- font_certs.xml: Google Fonts provider certificate array
+### Changed
+- UserPreferences: added fontIndex field (default 0 = System Mono)
+- SettingsViewModel: added setFontIndex()
+### Notes
+- Mono fonts (index 0, 1) labelled with MONO badge — best ORP focal stability
+- Variable fonts (index 2–5) more comfortable for long sessions, slight ORP shift
+- Custom font upload planned post-3.0.0
+### Next Milestone
+- 2.4.5: Wire open_book achievement on import; default WPM from Settings
+
+## [2.4.3] — 2026-03-14
+### Fixed
+- ORP color selection now correctly applied in reader: ReaderViewModel exposes
+  orpColorIndex StateFlow from DataStore; ReaderScreen maps index to Color and
+  passes it to OrpWordDisplay, guide line Canvas, progress bar, and play FAB
+- Delete confirmation dialog added to BookRow: tapping the trash icon now shows
+  an AlertDialog with book title, Cancel and Delete (red) buttons before removal
+### Changed
+- ReaderViewModel: showOrpColor and orpColorIndex both sourced from DataStore
+  via UserPreferencesRepository — changes in Settings reflected immediately in reader
+- ReaderScreen: progress bar and play FAB now use currentOrpColor for visual consistency
+### Next Milestone
+- 2.4.4: Wire open_book achievement on import
+
+## [2.4.2] — 2026-03-14
+### Added
+- Red (#E53935) added to ORP color palette as option 4
+- DOCX and IMAGE import restored to LibraryScreen via FAB + ModalBottomSheet format picker
+- Library empty state: descriptive placeholder with emoji instead of plain text
+- Settings: System / Light / Dark theme mode selector — persisted to DataStore
+- MainActivity: observes themeMode preference, overrides system dark/light accordingly
+### Changed
+- LibraryScreen: three inline import buttons replaced with single cyan FAB (cleaner UX)
+- FAB opens a bottom sheet listing all 5 formats with emoji, label, and subtitle
+- UserPreferences: added themeMode field (default = 0, system)
+- UserPreferencesRepository: added setThemeMode(), coerced 0–2
+- SettingsScreen: version string updated to v2.4.2
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred to 2.5.x)
+- TD-006: No unit tests
+- TD-007: Email verification not enforced
+### Next Milestone
+- 2.4.3: Wire open_book achievement on import; consider WPM chart in Stats
+
+## [2.4.1] — 2026-03-14
+### Added
+- AchievementToast.kt: auto-dismissing slide-in banner (3s) shows emoji, title,
+  and description when achievements unlock during a reading session
+- ReaderScreen: AchievementToastHost overlay wired to newAchievements StateFlow
+- StatsScreen: achievement chips now tappable — ModalBottomSheet shows full
+  description, category, unlock condition, and locked/unlocked status
+- StatsScreen: newly unlocked achievements (last 10 seconds) pulse with
+  InfiniteTransition scale animation until user navigates away
+### Next Milestone
+- 2.4.2: Wire open_book achievement on import; consider Firestore achievement sync for Pro
+
+## [2.4.0] — 2026-03-14
+### Added
+- AchievementEntity.kt: Room entity for persisting unlocked achievements
+- AchievementDao.kt: DAO for achievement unlock and query operations
+- AchievementDefinitions.kt: 20 achievement definitions across 5 categories
+- BoltRank enum: SPARK / BOLT / FLASH / STORM / THUNDER — dynamic rank based on effective WPM
+- AchievementsEngine.kt: Pure evaluation engine — takes stats snapshot + session context, returns newly unlocked IDs
+- BookDatabase migration 4→5: adds rewindCount to reading_sessions, creates achievements table
+- ReadingSessionRepository: streak computation, baseline vs recent WPM improvement, consistency check, Bolt Rank, achievement checking on recordSession
+- ReaderViewModel: active reading time tracking (excludes pauses), rewind counter, session recording on saveProgress, newAchievements StateFlow
+- StatsViewModel: exposes unlockedAchievements StateFlow from AchievementDao
+- StatsScreen: Bolt Rank card, 4-column achievement grid (locked/unlocked states), streak card
+### Changed
+- ReadingSessionEntity: added rewindCount field (default 0)
+- ReadingSessionDao: added getFirstFive/LastFive/LastTen/RankSessions and getQualifyingDays queries
+- BookDao: added bookCount() query
+- BookDatabase: version 4→5, achievementDao() abstract method added
+- StatsScreen: ProGate removed — stats and achievements visible to all users
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred to 2.5.x)
+- TD-006: No unit or instrumentation tests
+- TD-007: Email verification not enforced for app access
+### Next Milestone
+- 2.4.1: Wire achievement unlock notification in ReaderScreen (Snackbar on session end)
+
 ## [2.3.5] — 2026-03-13
 ### Changed
 - InAppPurchaseManager: queryExistingPurchases() visibility changed from private to public to support on-resume restoration

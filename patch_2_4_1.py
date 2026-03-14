@@ -1,3 +1,327 @@
+import os
+
+base = os.getcwd()
+
+def write(rel, content):
+    full = os.path.join(base, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, "w") as f:
+        f.write(content)
+    print(f"  ✓  {rel}")
+
+print("patch_2_4_1.py — Achievement notifications + Stats animations")
+print("=" * 70)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. AchievementToast.kt — slides in from top in ReaderScreen
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/components/AchievementToast.kt", """
+package com.badgr.orbreader.ui.components
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import com.badgr.orbreader.achievements.AchievementDefinitions
+import com.badgr.orbreader.ui.theme.ReaderColors
+import kotlinx.coroutines.delay
+
+/**
+ * Auto-dismissing achievement unlock banner.
+ * Slides down from the top of the screen, holds for 3 seconds, slides back up.
+ * Shows one achievement at a time; queues if multiple unlock simultaneously.
+ */
+@Composable
+fun AchievementToastHost(
+    newAchievementIds : List<String>,
+    onConsumed        : () -> Unit
+) {
+    var currentId by remember { mutableStateOf<String?>(null) }
+    var visible   by remember { mutableStateOf(false) }
+
+    LaunchedEffect(newAchievementIds) {
+        if (newAchievementIds.isEmpty()) return@LaunchedEffect
+        for (id in newAchievementIds) {
+            currentId = id
+            visible   = true
+            delay(3_200)
+            visible   = false
+            delay(400)   // wait for exit animation
+        }
+        onConsumed()
+    }
+
+    val def = currentId?.let { AchievementDefinitions.byId[it] }
+
+    AnimatedVisibility(
+        visible  = visible && def != null,
+        enter    = slideInVertically(
+            initialOffsetY = { -it },
+            animationSpec  = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        ) + fadeIn(),
+        exit     = slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(300)
+        ) + fadeOut(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .zIndex(10f)
+    ) {
+        if (def != null) {
+            Surface(
+                color  = ReaderColors.orpFocal.copy(alpha = 0.95f),
+                shape  = RoundedCornerShape(12.dp),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(def.emoji, fontSize = 26.sp)
+                    Column {
+                        Text(
+                            "Achievement Unlocked",
+                            fontSize      = 9.sp,
+                            fontFamily    = FontFamily.Monospace,
+                            fontWeight    = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            color         = ReaderColors.background.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            def.title,
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = ReaderColors.background
+                        )
+                        Text(
+                            def.description,
+                            fontSize = 11.sp,
+                            color    = ReaderColors.background.copy(alpha = 0.80f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. ReaderScreen.kt — add AchievementToastHost overlay
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/reader/ReaderScreen.kt", """
+package com.badgr.orbreader.ui.reader
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.ui.components.AchievementToastHost
+import com.badgr.orbreader.ui.components.OrpWordDisplay
+import com.badgr.orbreader.ui.theme.ReaderColors
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReaderScreen(
+    bookId   : String,
+    onBack   : () -> Unit,
+    viewModel: ReaderViewModel = viewModel()
+) {
+    LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
+
+    val state           by viewModel.state.collectAsState()
+    val bookTitle       by viewModel.bookTitle.collectAsState()
+    val showOrp         by viewModel.showOrpColor.collectAsState()
+    val newAchievements by viewModel.newAchievements.collectAsState()
+
+    BackHandler {
+        viewModel.saveProgress()
+        onBack()
+    }
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text     = bookTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color    = ReaderColors.textWarm,
+                        style    = MaterialTheme.typography.titleMedium
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.saveProgress(); onBack() }) {
+                        Icon(
+                            imageVector        = Icons.Default.Close,
+                            contentDescription = "Close Reader",
+                            tint               = ReaderColors.textWarm
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = ReaderColors.orpFocal)
+            }
+            return@Scaffold
+        }
+
+        // ── Main layout with toast overlay ────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // ── Reading content ───────────────────────────────────────────
+            Column(
+                modifier            = Modifier
+                    .fillMaxSize()
+                    .background(ReaderColors.background),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier         = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.size(width = 40.dp, height = 120.dp)) {
+                        val strokeWidth = 2.dp.toPx()
+                        val lineLength  = 15.dp.toPx()
+                        drawLine(
+                            color       = ReaderColors.orpFocal,
+                            start       = Offset(size.width / 2, 0f),
+                            end         = Offset(size.width / 2, lineLength),
+                            strokeWidth = strokeWidth
+                        )
+                        drawLine(
+                            color       = ReaderColors.orpFocal,
+                            start       = Offset(size.width / 2, size.height - lineLength),
+                            end         = Offset(size.width / 2, size.height),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                    OrpWordDisplay(
+                        word         = state.currentWord,
+                        fontSize     = 52.sp,
+                        showOrpColor = showOrp
+                    )
+                }
+
+                Surface(
+                    modifier       = Modifier.fillMaxWidth(),
+                    color          = ReaderColors.background,
+                    tonalElevation = 4.dp
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text  = "${state.currentIndex + 1} / ${state.words.size}",
+                            color = ReaderColors.textDimmed,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress   = { state.progress },
+                            modifier   = Modifier.fillMaxWidth(),
+                            color      = ReaderColors.progressBar,
+                            trackColor = ReaderColors.guideLine
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { viewModel.skipSeconds(-10) }) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Back 10s",
+                                     tint = ReaderColors.textWarm)
+                            }
+                            IconButton(onClick = { viewModel.adjustWpm(-25) }) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "-25 WPM",
+                                     tint = ReaderColors.textDimmed)
+                            }
+                            FloatingActionButton(
+                                onClick        = { viewModel.togglePlayPause() },
+                                containerColor = ReaderColors.orpFocal,
+                                contentColor   = ReaderColors.background
+                            ) {
+                                Icon(
+                                    imageVector        = if (state.isPlaying) Icons.Default.Pause
+                                                         else Icons.Default.PlayArrow,
+                                    contentDescription = if (state.isPlaying) "Pause" else "Play"
+                                )
+                            }
+                            IconButton(onClick = { viewModel.adjustWpm(25) }) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "+25 WPM",
+                                     tint = ReaderColors.textDimmed)
+                            }
+                            IconButton(onClick = { viewModel.skipSeconds(10) }) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Forward 10s",
+                                     tint = ReaderColors.textWarm)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text  = "${state.wpm} WPM",
+                            color = ReaderColors.orpFocal,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+
+            // ── Achievement toast overlay — sits above everything ─────────
+            AchievementToastHost(
+                newAchievementIds = newAchievements,
+                onConsumed        = viewModel::consumeAchievements,
+                modifier          = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    }
+}
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. StatsScreen.kt — add pulse animation + tap-to-detail bottom sheet
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/stats/StatsScreen.kt", """
 package com.badgr.orbreader.ui.stats
 
 import androidx.compose.animation.core.*
@@ -12,8 +336,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -207,12 +529,7 @@ private fun BoltRankCard(rank: BoltRank) {
                 Text(rank.label,    fontSize = 30.sp, fontWeight = FontWeight.Black, color = ReaderColors.textWarm)
                 Text(rank.subtitle, fontSize = 12.sp, color = ReaderColors.textDimmed)
             }
-            // Use launcher icon as the rank visual
-            androidx.compose.foundation.Image(
-                painter            = painterResource(id = android.R.mipmap.sym_def_app_icon),
-                contentDescription = rank.label,
-                modifier           = Modifier.size(52.dp)
-            )
+            Text(rank.emoji, fontSize = 44.sp)
         }
     }
 }
@@ -431,3 +748,56 @@ private fun formatLargeNumber(n: Long): String = when {
     n >= 1_000     -> "%.1fK".format(n / 1_000.0)
     else           -> n.toString()
 }
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fix AchievementToast.kt — modifier param on the host
+# ─────────────────────────────────────────────────────────────────────────────
+toast_path = os.path.join(base, "app/src/main/java/com/badgr/orbreader/ui/components/AchievementToast.kt")
+with open(toast_path) as f:
+    toast = f.read()
+
+toast = toast.replace(
+    "fun AchievementToastHost(\n    newAchievementIds : List<String>,\n    onConsumed        : () -> Unit\n)",
+    "fun AchievementToastHost(\n    newAchievementIds : List<String>,\n    onConsumed        : () -> Unit,\n    modifier          : Modifier = Modifier\n)"
+).replace(
+    "        modifier = Modifier\n            .fillMaxWidth()\n            .padding(horizontal = 20.dp, vertical = 8.dp)\n            .zIndex(10f)",
+    "        modifier = modifier\n            .fillMaxWidth()\n            .padding(horizontal = 20.dp, vertical = 8.dp)\n            .zIndex(10f)"
+)
+with open(toast_path, "w") as f:
+    f.write(toast)
+print("  ✓  AchievementToast.kt (modifier param added)")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHANGELOG
+# ─────────────────────────────────────────────────────────────────────────────
+cl_path = os.path.join(base, "CHANGELOG.md")
+with open(cl_path) as f:
+    existing = f.read()
+
+entry = """## [2.4.1] — 2026-03-14
+### Added
+- AchievementToast.kt: auto-dismissing slide-in banner (3s) shows emoji, title,
+  and description when achievements unlock during a reading session
+- ReaderScreen: AchievementToastHost overlay wired to newAchievements StateFlow
+- StatsScreen: achievement chips now tappable — ModalBottomSheet shows full
+  description, category, unlock condition, and locked/unlocked status
+- StatsScreen: newly unlocked achievements (last 10 seconds) pulse with
+  InfiniteTransition scale animation until user navigates away
+### Next Milestone
+- 2.4.2: Wire open_book achievement on import; consider Firestore achievement sync for Pro
+
+"""
+with open(cl_path, "w") as f:
+    f.write(entry + existing)
+print("  ✓  CHANGELOG.md")
+
+print()
+print("=" * 70)
+print("patch_2_4_1.py complete — 4 files updated.")
+print()
+print("Next:")
+print("  1.  ./gradlew assembleDebug")
+print("  2.  adb install -r app/build/outputs/apk/debug/app-debug.apk")
+print("  3.  Read for 2+ min — close reader — check toast fires")
+print("  4.  Open Stats — tap any achievement chip for detail sheet")

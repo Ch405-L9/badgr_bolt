@@ -9,89 +9,193 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.ui.theme.ReaderColors
+
+private data class FormatOption(
+    val label   : String,
+    val mime    : String,
+    val emoji   : String,
+    val subtitle: String
+)
+
+private val FORMAT_OPTIONS = listOf(
+    FormatOption("TXT",   "text/plain",                           "📄", "Plain text files"),
+    FormatOption("PDF",   "application/pdf",                     "📕", "Documents and articles"),
+    FormatOption("EPUB",  "application/epub+zip",                "📗", "Ebooks"),
+    FormatOption("DOCX",  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "📘", "Word documents"),
+    FormatOption("IMAGE", "image/*",                             "🖼",  "Photos of text — OCR")
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     onOpenBook: (bookId: String) -> Unit,
-    viewModel: LibraryViewModel = viewModel()
+    viewModel : LibraryViewModel = viewModel()
 ) {
     val books   by viewModel.books.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
-    val txtPicker  = rememberFilePicker("text/plain")           { uri, name -> viewModel.importTxt(uri, name) }
-    val pdfPicker  = rememberFilePicker("application/pdf")      { uri, name -> viewModel.importPdf(uri, name) }
-    val epubPicker = rememberFilePicker("application/epub+zip") { uri, name -> viewModel.importEpub(uri, name) }
+    var showFormatSheet by remember { mutableStateOf(false) }
+
+    // One launcher per format
+    val txtPicker  = rememberFilePicker("text/plain")           { u, n -> viewModel.importTxt(u, n) }
+    val pdfPicker  = rememberFilePicker("application/pdf")      { u, n -> viewModel.importPdf(u, n) }
+    val epubPicker = rememberFilePicker("application/epub+zip") { u, n -> viewModel.importEpub(u, n) }
+    val docxPicker = rememberFilePicker(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) { u, n -> viewModel.importDocx(u, n) }
+    val imagePicker = rememberFilePicker("image/*")             { u, n -> viewModel.importImage(u, n) }
+
+    val launcherMap = mapOf(
+        "TXT"   to txtPicker,
+        "PDF"   to pdfPicker,
+        "EPUB"  to epubPicker,
+        "DOCX"  to docxPicker,
+        "IMAGE" to imagePicker
+    )
 
     if (uiState is LibraryUiState.Error) {
         AlertDialog(
             onDismissRequest = viewModel::clearError,
-            title = { Text("Import failed") },
-            text  = { Text((uiState as LibraryUiState.Error).message) },
-            confirmButton = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+            title            = { Text("Import failed") },
+            text             = { Text((uiState as LibraryUiState.Error).message) },
+            confirmButton    = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
         )
     }
 
+    // ── Format picker bottom sheet ────────────────────────────────────────
+    if (showFormatSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFormatSheet = false },
+            containerColor   = ReaderColors.background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp)
+            ) {
+                Text(
+                    "Import a Book",
+                    color      = ReaderColors.textWarm,
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 18.sp
+                )
+                Text(
+                    "Choose a file format to import",
+                    color    = ReaderColors.textDimmed,
+                    fontSize = 13.sp
+                )
+                Spacer(Modifier.height(20.dp))
+
+                FORMAT_OPTIONS.forEach { fmt ->
+                    Surface(
+                        onClick  = {
+                            showFormatSheet = false
+                            launcherMap[fmt.label]?.launch(fmt.mime)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        color    = ReaderColors.orpFocal.copy(alpha = 0.06f),
+                        shape    = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier          = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(fmt.emoji, fontSize = 24.sp)
+                            Column {
+                                Text(fmt.label, color = ReaderColors.textWarm, fontWeight = FontWeight.SemiBold)
+                                Text(fmt.subtitle, color = ReaderColors.textDimmed, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("OrbReader Library") }) }
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title  = { Text("Library", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick        = { showFormatSheet = true },
+                containerColor = ReaderColors.orpFocal,
+                contentColor   = ReaderColors.background
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Import book")
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ImportButton(label = "TXT",  modifier = Modifier.weight(1f)) { txtPicker.launch("text/plain") }
-                ImportButton(label = "PDF",  modifier = Modifier.weight(1f)) { pdfPicker.launch("application/pdf") }
-                ImportButton(label = "EPUB", modifier = Modifier.weight(1f)) { epubPicker.launch("application/epub+zip") }
-            }
-
             if (uiState is LibraryUiState.Converting) {
                 val name = (uiState as LibraryUiState.Converting).fileName
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Text(text = "Converting \"$name\"\u2026", style = MaterialTheme.typography.bodyMedium)
+                    CircularProgressIndicator(
+                        modifier   = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color      = ReaderColors.orpFocal
+                    )
+                    Text(
+                        text  = "Converting \"$name\"\u2026",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ReaderColors.textWarm
+                    )
                 }
+                HorizontalDivider(color = ReaderColors.guideLine)
             }
 
-            HorizontalDivider()
-
             if (books.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text  = "No books yet. Import a TXT, PDF, or EPUB file.",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                Box(
+                    modifier         = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("📚", fontSize = 48.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "No books yet",
+                            color      = ReaderColors.textWarm,
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 18.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Tap + to import TXT, PDF, EPUB, DOCX, or an image",
+                            color    = ReaderColors.textDimmed,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             } else {
                 LazyColumn {
@@ -101,7 +205,7 @@ fun LibraryScreen(
                             onClick  = { onOpenBook(book.id) },
                             onDelete = { viewModel.deleteBook(book) }
                         )
-                        HorizontalDivider()
+                        HorizontalDivider(color = ReaderColors.guideLine)
                     }
                 }
             }
@@ -110,16 +214,11 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun ImportButton(label: String, modifier: Modifier, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = modifier) { Text(text = "+ $label") }
-}
-
-@Composable
 private fun rememberFilePicker(
     mimeType: String,
     onPicked: (uri: Uri, fileName: String) -> Unit
-): ManagedActivityResultLauncherWrapper {
-    val context = LocalContext.current
+): ManagedLauncher {
+    val context  = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -127,13 +226,11 @@ private fun rememberFilePicker(
         val name = resolveFileName(context.contentResolver, uri) ?: "Unknown"
         onPicked(uri, name)
     }
-    return remember(launcher) { ManagedActivityResultLauncherWrapper(launcher) }
+    return remember(launcher) { ManagedLauncher(launcher) }
 }
 
-private class ManagedActivityResultLauncherWrapper(
-    private val launcher: ActivityResultLauncher<String>
-) {
-    fun launch(mimeType: String) = launcher.launch(mimeType)
+private class ManagedLauncher(private val launcher: ActivityResultLauncher<String>) {
+    fun launch(mime: String) = launcher.launch(mime)
 }
 
 private fun resolveFileName(resolver: ContentResolver, uri: Uri): String? {

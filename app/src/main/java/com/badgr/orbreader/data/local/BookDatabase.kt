@@ -8,14 +8,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities  = [BookEntity::class, ReadingSessionEntity::class],
-    version   = 4,
+    entities  = [BookEntity::class, ReadingSessionEntity::class, AchievementEntity::class],
+    version   = 5,
     exportSchema = true
 )
 abstract class BookDatabase : RoomDatabase() {
 
     abstract fun bookDao(): BookDao
     abstract fun readingSessionDao(): ReadingSessionDao
+    abstract fun achievementDao(): AchievementDao
 
     companion object {
         @Volatile private var INSTANCE: BookDatabase? = null
@@ -34,17 +35,14 @@ abstract class BookDatabase : RoomDatabase() {
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
-                    CREATE TABLE IF NOT EXISTS reading_sessions (
-                        id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        bookId          TEXT    NOT NULL,
-                        bookTitle       TEXT    NOT NULL,
-                        wordsRead       INTEGER NOT NULL,
-                        durationSeconds INTEGER NOT NULL,
-                        avgWpm          INTEGER NOT NULL,
-                        timestamp       INTEGER NOT NULL
-                    )
-                """.trimIndent())
+                db.execSQL("CREATE TABLE IF NOT EXISTS reading_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, bookId TEXT NOT NULL, bookTitle TEXT NOT NULL, wordsRead INTEGER NOT NULL, durationSeconds INTEGER NOT NULL, avgWpm INTEGER NOT NULL, timestamp INTEGER NOT NULL)")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reading_sessions ADD COLUMN rewindCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS achievements (id TEXT NOT NULL, unlockedAt INTEGER NOT NULL, PRIMARY KEY(id))")
             }
         }
 
@@ -55,7 +53,7 @@ abstract class BookDatabase : RoomDatabase() {
                     BookDatabase::class.java,
                     "orbreader.db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
                 .also { INSTANCE = it }
             }

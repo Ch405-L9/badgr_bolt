@@ -213,6 +213,7 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
 
                         TextButton(
                             onClick = {
+                                isSignUp = !isSignUp
                                 vm.clearError()
                             }
                         ) {
