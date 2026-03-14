@@ -1,3 +1,40 @@
+## [2.4.1] — 2026-03-14
+### Added
+- AchievementToast.kt: auto-dismissing slide-in banner (3s) shows emoji, title,
+  and description when achievements unlock during a reading session
+- ReaderScreen: AchievementToastHost overlay wired to newAchievements StateFlow
+- StatsScreen: achievement chips now tappable — ModalBottomSheet shows full
+  description, category, unlock condition, and locked/unlocked status
+- StatsScreen: newly unlocked achievements (last 10 seconds) pulse with
+  InfiniteTransition scale animation until user navigates away
+### Next Milestone
+- 2.4.2: Wire open_book achievement on import; consider Firestore achievement sync for Pro
+
+## [2.4.0] — 2026-03-14
+### Added
+- AchievementEntity.kt: Room entity for persisting unlocked achievements
+- AchievementDao.kt: DAO for achievement unlock and query operations
+- AchievementDefinitions.kt: 20 achievement definitions across 5 categories
+- BoltRank enum: SPARK / BOLT / FLASH / STORM / THUNDER — dynamic rank based on effective WPM
+- AchievementsEngine.kt: Pure evaluation engine — takes stats snapshot + session context, returns newly unlocked IDs
+- BookDatabase migration 4→5: adds rewindCount to reading_sessions, creates achievements table
+- ReadingSessionRepository: streak computation, baseline vs recent WPM improvement, consistency check, Bolt Rank, achievement checking on recordSession
+- ReaderViewModel: active reading time tracking (excludes pauses), rewind counter, session recording on saveProgress, newAchievements StateFlow
+- StatsViewModel: exposes unlockedAchievements StateFlow from AchievementDao
+- StatsScreen: Bolt Rank card, 4-column achievement grid (locked/unlocked states), streak card
+### Changed
+- ReadingSessionEntity: added rewindCount field (default 0)
+- ReadingSessionDao: added getFirstFive/LastFive/LastTen/RankSessions and getQualifyingDays queries
+- BookDao: added bookCount() query
+- BookDatabase: version 4→5, achievementDao() abstract method added
+- StatsScreen: ProGate removed — stats and achievements visible to all users
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred to 2.5.x)
+- TD-006: No unit or instrumentation tests
+- TD-007: Email verification not enforced for app access
+### Next Milestone
+- 2.4.1: Wire achievement unlock notification in ReaderScreen (Snackbar on session end)
+
 ## [2.3.5] — 2026-03-13
 ### Changed
 - InAppPurchaseManager: queryExistingPurchases() visibility changed from private to public to support on-resume restoration

@@ -1,0 +1,139 @@
+{
+  "shn_version": "2.0",
+  "generated": "2026-03-07T00:00:00-05:00",
+  "project": "BADGR Bolt",
+  "package": "com.badgr.orbreader",
+  "owner": "BADGRTechnologies LLC",
+  "developer": "Brandon Anthony Grant (Ch405)",
+  "repo": "https://github.com/Ch405-L9/badgr_bolt.git",
+  "current_version": "2.3.0",
+  "min_sdk": 26,
+  "target_sdk": 35,
+  "build_tools": "AGP 8.7.3 / Kotlin 2.0.21 / Gradle 8.9",
+  "architecture": {
+    "pattern": "MVVM",
+    "ui": "Jetpack Compose (Material 3)",
+    "async": "Kotlin Coroutines + StateFlow",
+    "local_storage": "Room v2.6.1 (schema version 4)",
+    "preferences": "DataStore",
+    "network": "Retrofit + OkHttp (30s connect, 60s read/write)",
+    "cloud": "Firebase Auth (email/password) + Firestore",
+    "billing": "Google Play Billing v7.0.0",
+    "crash_reporting": "Firebase Crashlytics"
+  },
+  "key_files": {
+    "application_class": "app/src/main/java/com/badgr/orbreader/OrbReaderApp.kt",
+    "main_activity": "app/src/main/java/com/badgr/orbreader/MainActivity.kt",
+    "billing_manager": "app/src/main/java/com/badgr/orbreader/billing/InAppPurchaseManager.kt",
+    "pro_gate": "app/src/main/java/com/badgr/orbreader/billing/ProGate.kt",
+    "cloud_sync": "app/src/main/java/com/badgr/orbreader/sync/CloudSyncManager.kt",
+    "book_database": "app/src/main/java/com/badgr/orbreader/data/local/BookDatabase.kt",
+    "library_viewmodel": "app/src/main/java/com/badgr/orbreader/ui/library/LibraryViewModel.kt",
+    "reader_viewmodel": "app/src/main/java/com/badgr/orbreader/ui/reader/ReaderViewModel.kt",
+    "account_viewmodel": "app/src/main/java/com/badgr/orbreader/ui/account/AccountViewModel.kt",
+    "orp_engine": "app/src/main/java/com/badgr/orbreader/util/OrpEngine.kt",
+    "build_gradle": "app/build.gradle.kts",
+    "version_catalog": "gradle/libs.versions.toml",
+    "proguard_rules": "app/proguard-rules.pro",
+    "changelog": "CHANGELOG.md",
+    "data_safety": "docs/DATA_SAFETY.md"
+  },
+  "billing": {
+    "library_version": "7.0.0",
+    "product_ids": {
+      "subscription_monthly": "badgr_bolt_pro_monthly",
+      "lifetime_purchase": "badgr_bolt_pro_lifetime"
+    },
+    "sku_status": "SKUs not yet created in Play Console — merchant account verification pending",
+    "manager_class": "InAppPurchaseManager",
+    "singleton_host": "OrbReaderApp",
+    "access_pattern": "(application as OrbReaderApp).purchaseManager",
+    "pro_state_flow": "InAppPurchaseManager.isPro (StateFlow<Boolean>)"
+  },
+  "firebase": {
+    "project_id": "rsvpreader-2cd46ec1",
+    "services": [
+      "Auth (email/password)",
+      "Firestore",
+      "Crashlytics",
+      "Analytics"
+    ],
+    "firestore_rules": "User-scoped, authenticated access only",
+    "test_account": "badgCh405@gmail.com",
+    "known_issue": "Email/Password provider must be manually enabled in Firebase Console — not a code issue"
+  },
+  "room_database": {
+    "class": "BookDatabase",
+    "schema_version": 4,
+    "migrations": [
+      "1->2",
+      "2->3",
+      "3->4"
+    ],
+    "note": "fallbackToDestructiveMigration removed in v2.2.2 — all migrations explicit"
+  },
+  "play_console": {
+    "app_status": "Internal Testing — Active (not reviewed)",
+    "release_name": "Cupcake2",
+    "version_code": 1,
+    "merchant_account": "Verification pending — Bank of America checking xxxx952",
+    "store_listing_status": "Incomplete — 2 of 11 setup tasks complete",
+    "pending_tasks": [
+      "Privacy policy URL",
+      "Content rating questionnaire",
+      "Target audience declaration",
+      "Advertising ID declaration",
+      "Screenshots (minimum 2 phone screenshots)",
+      "App icon 512x512",
+      "Data safety form"
+    ]
+  },
+  "signing": {
+    "keystore_file": "badgr_release.jks",
+    "keystore_location": "~/AndroidStudioProjects/badgr_bolt/badgr_release.jks",
+    "backup_location": "~/badgr_release_BACKUP.jks",
+    "alias": "badgr_bolt",
+    "cert_expiry": "2053-07-21",
+    "gradle_properties": "STORE_PASSWORD and KEY_PASSWORD — gitignored"
+  },
+  "tech_debt": {
+    "TD-001": "RESOLVED — Firestore security rules configured",
+    "TD-002": "RESOLVED — fallbackToDestructiveMigration removed",
+    "TD-003": "ACTIVE — Google Play Billing not yet wired to ProGate — next step",
+    "TD-004": "ACTIVE — Deprecated statusBarColor in Theme.kt",
+    "TD-005": "RESOLVED — OrbReaderApp registered in AndroidManifest",
+    "TD-006": "ACTIVE — No unit or instrumentation tests exist",
+    "TD-007": "ACTIVE — Email verification sent but not enforced for app access"
+  },
+  "next_steps": [
+    "Wire ProGate to observe InAppPurchaseManager.isPro StateFlow",
+    "Complete Play Console store listing (screenshots, privacy policy, content rating)",
+    "Create SKUs in Play Console once merchant account verified",
+    "Implement purchase UI buttons in AccountScreen",
+    "Test purchase flow with Google Play test accounts"
+  ],
+  "version_roadmap": {
+    "v2.3.x": "Billing infrastructure and ProGate wiring",
+    "v2.4.x": "Performance tracker and reading stats",
+    "v2.5.x": "UX/UI polish sprint",
+    "v2.6.x": "Store readiness — full listing, screenshots, compliance",
+    "v3.0.0": "Public launch on Google Play"
+  },
+  "standing_rules_for_ai_agents": [
+    "NEVER write files via heredoc — use Python file I/O only",
+    "Run ./gradlew assembleDebug immediately after every file change",
+    "NEVER push without explicit approval from Ch405",
+    "NEVER commit: google-services.json, *.jks, keystore.properties, gradle.properties",
+    "Run secrets scan before every push: grep -r 'AIza\\|sk-ant\\|AKIA' app/src --include='*.kt'",
+    "Gemini output is suspect — verify all method names exist before accepting",
+    "Firebase CONFIGURATION_NOT_FOUND = Email/Password provider not enabled in Console, not a code bug"
+  ],
+  "dev_environment": {
+    "machine": "BADGR-Lab",
+    "user": "t0n34781",
+    "os": "Ubuntu Linux",
+    "project_path": "~/AndroidStudioProjects/badgr_bolt",
+    "android_studio": "Ladybug or later",
+    "local_ai": "Ollama (qwen2.5-coder:7b for code, llama3.2 for planning)",
+    "adb": "Wireless"
+  }

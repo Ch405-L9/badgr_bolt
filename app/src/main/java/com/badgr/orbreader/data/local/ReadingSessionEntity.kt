@@ -11,5 +11,6 @@ data class ReadingSessionEntity(
     val wordsRead       : Int,
     val durationSeconds : Int,
     val avgWpm          : Int,
+    val rewindCount     : Int  = 0,
     val timestamp       : Long = System.currentTimeMillis()
 )

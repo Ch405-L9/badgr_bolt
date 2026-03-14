@@ -1,0 +1,1426 @@
+STEP 1 — Add DataStore to version catalog and build.gradle:
+bash# Add datastore version and library alias to libs.versions.toml
+sed -i '/^room\s*=/a datastore              = "1.1.1"' \
+    /home/t0n34781/AndroidStudioProjects/badgr_bolt/gradle/libs.versions.toml
+
+sed -i '/^androidx-room-compiler/a androidx-datastore-preferences     = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }' \
+    /home/t0n34781/AndroidStudioProjects/badgr_bolt/gradle/libs.versions.toml
+
+# Add implementation to build.gradle.kts
+sed -i '/implementation(libs.coil.compose)/a \    implementation(libs.androidx.datastore.preferences)' \
+    /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/build.gradle.kts
+
+STEP 2 — ProGate (entitlement guard, everything open for private rollout):
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/billing/ProGate.kt << 'EOF'
+package com.badgr.orbreader.billing
+
+/**
+ * Single source of truth for feature entitlement.
+ *
+ * Private rollout: isPro = true unlocks everything.
+ * When Google Play Billing is wired in, replace this with a
+ * real entitlement check from InAppPurchaseManager.
+ *
+ * Feature flags:
+ *   STATS_SCREEN    - reading performance analytics
+ *   CLOUD_SYNC      - Firebase library/progress sync
+ *   UNLIMITED_LIB   - no book count cap
+ *   CUSTOM_THEMES   - color palette beyond default
+ *   TTS             - text-to-speech
+ */
+object ProGate {
+
+    // ── Flip to false to simulate Free tier behavior ───────────────────────
+    private const val PRIVATE_ROLLOUT_ALL_OPEN = true
+
+    val isPro: Boolean get() = PRIVATE_ROLLOUT_ALL_OPEN
+
+    // Individual feature gates — override individually if needed
+    val statsScreen   : Boolean get() = isPro
+    val cloudSync     : Boolean get() = isPro
+    val unlimitedLib  : Boolean get() = isPro
+    val customThemes  : Boolean get() = isPro
+    val tts           : Boolean get() = isPro
+
+    // Free tier hard limits (enforced when !isPro)
+    const val FREE_BOOK_LIMIT = 5
+}
+EOF
+
+STEP 3 — UserPreferencesRepository (DataStore wrapper):
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/preferences/UserPreferencesRepository.kt << 'EOF'
+package com.badgr.orbreader.data.preferences
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "badgr_user_prefs")
+
+data class UserPreferences(
+    val defaultWpm   : Int     = 150,
+    val fontSize     : Int     = 46,
+    val showOrpColor : Boolean = true,
+    val orpColorIndex: Int     = 0     // 0=cyan, 1=pink, 2=green, 3=amber
+)
+
+class UserPreferencesRepository(private val context: Context) {
+
+    private object Keys {
+        val DEFAULT_WPM    = intPreferencesKey("default_wpm")
+        val FONT_SIZE      = intPreferencesKey("font_size")
+        val SHOW_ORP_COLOR = booleanPreferencesKey("show_orp_color")
+        val ORP_COLOR_IDX  = intPreferencesKey("orp_color_index")
+    }
+
+    val preferences: Flow<UserPreferences> = context.dataStore.data
+        .catch { e ->
+            if (e is IOException) emit(emptyPreferences())
+            else throw e
+        }
+        .map { prefs ->
+            UserPreferences(
+                defaultWpm    = prefs[Keys.DEFAULT_WPM]    ?: 150,
+                fontSize      = prefs[Keys.FONT_SIZE]      ?: 46,
+                showOrpColor  = prefs[Keys.SHOW_ORP_COLOR] ?: true,
+                orpColorIndex = prefs[Keys.ORP_COLOR_IDX]  ?: 0
+            )
+        }
+
+    suspend fun setDefaultWpm(wpm: Int) {
+        context.dataStore.edit { it[Keys.DEFAULT_WPM] = wpm.coerceIn(60, 1200) }
+    }
+
+    suspend fun setFontSize(size: Int) {
+        context.dataStore.edit { it[Keys.FONT_SIZE] = size.coerceIn(28, 72) }
+    }
+
+    suspend fun setShowOrpColor(show: Boolean) {
+        context.dataStore.edit { it[Keys.SHOW_ORP_COLOR] = show }
+    }
+
+    suspend fun setOrpColorIndex(index: Int) {
+        context.dataStore.edit { it[Keys.ORP_COLOR_IDX] = index.coerceIn(0, 3) }
+    }
+}
+EOF
+
+STEP 4 — ReadingSession Room entity and DAO:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/local/ReadingSessionEntity.kt << 'EOF'
+package com.badgr.orbreader.data.local
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "reading_sessions")
+data class ReadingSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id      : Long = 0,
+    val bookId          : String,
+    val bookTitle       : String,
+    val wordsRead       : Int,
+    val durationSeconds : Int,
+    val avgWpm          : Int,
+    val timestamp       : Long = System.currentTimeMillis()
+)
+EOF
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/local/ReadingSessionDao.kt << 'EOF'
+package com.badgr.orbreader.data.local
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ReadingSessionDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSession(session: ReadingSessionEntity)
+
+    @Query("SELECT * FROM reading_sessions ORDER BY timestamp DESC")
+    fun getAllSessions(): Flow<List<ReadingSessionEntity>>
+
+    @Query("SELECT * FROM reading_sessions ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getRecentSessions(limit: Int = 10): List<ReadingSessionEntity>
+
+    @Query("SELECT COUNT(*) FROM reading_sessions")
+    suspend fun totalSessions(): Int
+
+    @Query("SELECT SUM(wordsRead) FROM reading_sessions")
+    suspend fun totalWordsRead(): Long?
+
+    @Query("SELECT MAX(avgWpm) FROM reading_sessions")
+    suspend fun bestWpm(): Int?
+
+    @Query("SELECT AVG(avgWpm) FROM reading_sessions")
+    suspend fun averageWpm(): Double?
+
+    @Query("SELECT SUM(durationSeconds) FROM reading_sessions")
+    suspend fun totalReadingSeconds(): Long?
+
+    @Query("DELETE FROM reading_sessions")
+    suspend fun clearAll()
+}
+EOF
+
+STEP 5 — Bump BookDatabase to v4, add reading_sessions:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/local/BookDatabase.kt << 'EOF'
+package com.badgr.orbreader.data.local
+
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+@Database(
+    entities  = [BookEntity::class, ReadingSessionEntity::class],
+    version   = 4,
+    exportSchema = true
+)
+abstract class BookDatabase : RoomDatabase() {
+
+    abstract fun bookDao(): BookDao
+    abstract fun readingSessionDao(): ReadingSessionDao
+
+    companion object {
+        @Volatile private var INSTANCE: BookDatabase? = null
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN currentWordIndex INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN coverPath TEXT")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS reading_sessions (
+                        id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        bookId          TEXT    NOT NULL,
+                        bookTitle       TEXT    NOT NULL,
+                        wordsRead       INTEGER NOT NULL,
+                        durationSeconds INTEGER NOT NULL,
+                        avgWpm          INTEGER NOT NULL,
+                        timestamp       INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        fun getInstance(context: Context): BookDatabase =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    BookDatabase::class.java,
+                    "orbreader.db"
+                )
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .fallbackToDestructiveMigration()
+                .build()
+                .also { INSTANCE = it }
+            }
+    }
+}
+EOF
+
+STEP 6 — ReadingSessionRepository:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/repository/ReadingSessionRepository.kt << 'EOF'
+package com.badgr.orbreader.data.repository
+
+import com.badgr.orbreader.data.local.ReadingSessionDao
+import com.badgr.orbreader.data.local.ReadingSessionEntity
+import kotlinx.coroutines.flow.Flow
+
+data class StatsSnapshot(
+    val totalSessions     : Int    = 0,
+    val totalWordsRead    : Long   = 0L,
+    val totalReadingMins  : Int    = 0,
+    val bestWpm           : Int    = 0,
+    val averageWpm        : Int    = 0,
+    val recentSessions    : List<ReadingSessionEntity> = emptyList()
+)
+
+class ReadingSessionRepository(private val dao: ReadingSessionDao) {
+
+    val allSessions: Flow<List<ReadingSessionEntity>> = dao.getAllSessions()
+
+    suspend fun recordSession(
+        bookId          : String,
+        bookTitle       : String,
+        wordsRead       : Int,
+        durationSeconds : Int,
+        wpm             : Int
+    ) {
+        if (wordsRead < 5) return   // discard trivial sessions
+        dao.insertSession(
+            ReadingSessionEntity(
+                bookId          = bookId,
+                bookTitle       = bookTitle,
+                wordsRead       = wordsRead,
+                durationSeconds = durationSeconds,
+                avgWpm          = wpm
+            )
+        )
+    }
+
+    suspend fun getSnapshot(): StatsSnapshot {
+        val recent = dao.getRecentSessions(10)
+        return StatsSnapshot(
+            totalSessions    = dao.totalSessions(),
+            totalWordsRead   = dao.totalWordsRead() ?: 0L,
+            totalReadingMins = ((dao.totalReadingSeconds() ?: 0L) / 60L).toInt(),
+            bestWpm          = dao.bestWpm() ?: 0,
+            averageWpm       = (dao.averageWpm() ?: 0.0).toInt(),
+            recentSessions   = recent
+        )
+    }
+}
+EOF
+
+STEP 7 — SettingsViewModel:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/settings/SettingsViewModel.kt << 'EOF'
+package com.badgr.orbreader.ui.settings
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.data.preferences.UserPreferencesRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repo = UserPreferencesRepository(application)
+
+    val prefs = repo.preferences.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        com.badgr.orbreader.data.preferences.UserPreferences()
+    )
+
+    fun setWpm(wpm: Int)              = viewModelScope.launch { repo.setDefaultWpm(wpm) }
+    fun setFontSize(size: Int)        = viewModelScope.launch { repo.setFontSize(size) }
+    fun setShowOrpColor(show: Boolean)= viewModelScope.launch { repo.setShowOrpColor(show) }
+    fun setOrpColorIndex(idx: Int)    = viewModelScope.launch { repo.setOrpColorIndex(idx) }
+}
+EOF
+
+STEP 8 — SettingsScreen wired to DataStore:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/settings/SettingsScreen.kt << 'EOF'
+package com.badgr.orbreader.ui.settings
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.BuildConfig
+import com.badgr.orbreader.billing.ProGate
+import com.badgr.orbreader.ui.theme.ReaderColors
+
+private val ORP_COLORS = listOf(
+    Color(0xFF26C6DA),   // 0 cyan-teal (default)
+    Color(0xFF4CAF50),   // 1 green
+    Color(0xFFFFC107),   // 2 amber
+    Color(0xFFE040FB),   // 3 purple
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
+    val prefs by vm.prefs.collectAsState()
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Settings",
+                        color      = ReaderColors.textWarm,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+
+            // ── Default Reading Speed ─────────────────────────────────────
+            item {
+                SettingSection(title = "Default Reading Speed") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { vm.setWpm(prefs.defaultWpm - 25) },
+                            colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
+                            modifier = Modifier.semantics { contentDescription = "Decrease WPM" }
+                        ) { Text("−") }
+
+                        Text(
+                            "${prefs.defaultWpm} WPM",
+                            color      = ReaderColors.textWarm,
+                            fontSize   = 22.sp,
+                            fontWeight = FontWeight.Black
+                        )
+
+                        OutlinedButton(
+                            onClick = { vm.setWpm(prefs.defaultWpm + 25) },
+                            colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal),
+                            modifier = Modifier.semantics { contentDescription = "Increase WPM" }
+                        ) { Text("+") }
+                    }
+                }
+            }
+
+            // ── Font Size ─────────────────────────────────────────────────
+            item {
+                SettingSection(title = "Font Size  —  ${prefs.fontSize}pt") {
+                    Slider(
+                        value        = prefs.fontSize.toFloat(),
+                        onValueChange = { vm.setFontSize(it.toInt()) },
+                        valueRange   = 28f..72f,
+                        colors = SliderDefaults.colors(
+                            thumbColor       = ReaderColors.orpFocal,
+                            activeTrackColor = ReaderColors.orpFocal
+                        ),
+                        modifier = Modifier.semantics {
+                            contentDescription = "Font size ${prefs.fontSize} points"
+                        }
+                    )
+                }
+            }
+
+            // ── ORP Color Highlight ───────────────────────────────────────
+            item {
+                SettingSection(title = "ORP Highlight Color") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ORP_COLORS.forEachIndexed { idx, color ->
+                            ColorChip(
+                                color      = color,
+                                isSelected = prefs.orpColorIndex == idx,
+                                onClick    = { vm.setOrpColorIndex(idx) },
+                                label      = "ORP color option $idx"
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Show ORP highlight",
+                            color = ReaderColors.textWarm,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Switch(
+                            checked         = prefs.showOrpColor,
+                            onCheckedChange = { vm.setShowOrpColor(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor  = ReaderColors.background,
+                                checkedTrackColor  = ReaderColors.orpFocal
+                            ),
+                            modifier = Modifier.semantics {
+                                contentDescription = if (prefs.showOrpColor)
+                                    "ORP highlight on" else "ORP highlight off"
+                            }
+                        )
+                    }
+                }
+            }
+
+            // ── Supported Formats ─────────────────────────────────────────
+            item {
+                SettingSection(title = "Supported Formats") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("TXT", "PDF", "EPUB", "DOCX").forEach { fmt ->
+                            Surface(
+                                color = ReaderColors.orpFocal.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    fmt,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    color    = ReaderColors.orpFocal,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Pro Status ────────────────────────────────────────────────
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color    = if (ProGate.isPro)
+                                   ReaderColors.orpFocal.copy(alpha = 0.12f)
+                               else Color(0xFF2C2040),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (ProGate.isPro) "BADGR Bolt Pro — Active"
+                                else "Upgrade to Bolt Pro",
+                                color      = if (ProGate.isPro) ReaderColors.orpFocal
+                                             else ReaderColors.textWarm,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (ProGate.isPro) "All features unlocked"
+                                else "Stats, cloud sync, unlimited library",
+                                color  = ReaderColors.textDimmed,
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (!ProGate.isPro) {
+                            OutlinedButton(
+                                onClick = { /* billing flow — coming soon */ },
+                                colors  = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = ReaderColors.orpFocal
+                                )
+                            ) { Text("Unlock") }
+                        }
+                    }
+                }
+            }
+
+            // ── App Version ───────────────────────────────────────────────
+            item {
+                Text(
+                    "BADGR Bolt v${BuildConfig.VERSION_NAME}  (build ${BuildConfig.VERSION_CODE})",
+                    color    = ReaderColors.textDimmed,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column {
+        Text(
+            title,
+            color  = ReaderColors.textWarm,
+            style  = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(10.dp))
+        content()
+    }
+}
+
+@Composable
+private fun ColorChip(
+    color: Color,
+    isSelected: Boolean,
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(40.dp)
+            .semantics { contentDescription = label },
+        onClick  = onClick,
+        color    = color,
+        shape    = CircleShape,
+        border   = if (isSelected) BorderStroke(2.dp, Color.White) else null
+    ) {}
+}
+EOF
+
+STEP 9 — StatsViewModel:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/stats/StatsViewModel.kt << 'EOF'
+package com.badgr.orbreader.ui.stats
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.data.local.BookDatabase
+import com.badgr.orbreader.data.repository.ReadingSessionRepository
+import com.badgr.orbreader.data.repository.StatsSnapshot
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class StatsViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repo = ReadingSessionRepository(
+        BookDatabase.getInstance(application).readingSessionDao()
+    )
+
+    private val _snapshot = MutableStateFlow(StatsSnapshot())
+    val snapshot: StateFlow<StatsSnapshot> = _snapshot.asStateFlow()
+
+    val sessions = repo.allSessions.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        emptyList()
+    )
+
+    init {
+        viewModelScope.launch { _snapshot.value = repo.getSnapshot() }
+        // refresh when sessions table changes
+        viewModelScope.launch {
+            repo.allSessions.collect {
+                _snapshot.value = repo.getSnapshot()
+            }
+        }
+    }
+}
+EOF
+
+STEP 10 — StatsScreen wired to real data:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/stats/StatsScreen.kt << 'EOF'
+package com.badgr.orbreader.ui.stats
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.billing.ProGate
+import com.badgr.orbreader.data.local.ReadingSessionEntity
+import com.badgr.orbreader.ui.theme.ReaderColors
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StatsScreen(vm: StatsViewModel = viewModel()) {
+    val snapshot by vm.snapshot.collectAsState()
+    val sessions by vm.sessions.collectAsState()
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text("Reading Stats", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+
+        if (!ProGate.statsScreen) {
+            // Free tier gate placeholder
+            Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Stats is a Pro feature", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Upgrade to unlock reading analytics", color = ReaderColors.textDimmed)
+                }
+            }
+            return@Scaffold
+        }
+
+        if (snapshot.totalSessions == 0) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("No sessions yet", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Start reading to track your progress", color = ReaderColors.textDimmed)
+                }
+            }
+            return@Scaffold
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // ── Summary cards ─────────────────────────────────────────────
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard("Best WPM",     "${snapshot.bestWpm}",          "wpm",  Modifier.weight(1f))
+                    StatCard("Avg WPM",      "${snapshot.averageWpm}",       "wpm",  Modifier.weight(1f))
+                }
+            }
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard("Sessions",     "${snapshot.totalSessions}",    "",     Modifier.weight(1f))
+                    StatCard("Total Time",   "${snapshot.totalReadingMins}", "min",  Modifier.weight(1f))
+                }
+            }
+            item {
+                StatCard(
+                    "Total Words Read",
+                    formatLargeNumber(snapshot.totalWordsRead),
+                    "words",
+                    Modifier.fillMaxWidth()
+                )
+            }
+
+            // ── Recent sessions header ────────────────────────────────────
+            item {
+                Text(
+                    "Recent Sessions",
+                    color      = ReaderColors.textWarm,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier   = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            // ── Session rows ──────────────────────────────────────────────
+            items(sessions.take(20)) { session ->
+                SessionRow(session)
+            }
+
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+}
+
+@Composable
+fun StatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color    = ReaderColors.orpFocal.copy(alpha = 0.08f),
+        shape    = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(label, color = ReaderColors.textDimmed, fontSize = 12.sp)
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = ReaderColors.textWarm, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                if (unit.isNotBlank()) {
+                    Spacer(Modifier.width(4.dp))
+                    Text(unit, color = ReaderColors.orpFocal, fontSize = 12.sp,
+                         modifier = Modifier.padding(bottom = 3.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SessionRow(session: ReadingSessionEntity) {
+    val dateStr = remember(session.timestamp) {
+        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(session.timestamp))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color    = ReaderColors.orpFocal.copy(alpha = 0.04f),
+        shape    = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    session.bookTitle,
+                    color    = ReaderColors.textWarm,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
+                )
+                Text(
+                    dateStr,
+                    color    = ReaderColors.textDimmed,
+                    fontSize = 11.sp
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("${session.avgWpm} WPM", color = ReaderColors.orpFocal, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("${session.wordsRead} words", color = ReaderColors.textDimmed, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+private fun formatLargeNumber(n: Long): String = when {
+    n >= 1_000_000 -> "%.1fM".format(n / 1_000_000.0)
+    n >= 1_000     -> "%.1fK".format(n / 1_000.0)
+    else           -> n.toString()
+}
+EOF
+
+STEP 11 — ReaderViewModel: load saved WPM from DataStore + record session on stop:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/reader/ReaderViewModel.kt << 'EOF'
+package com.badgr.orbreader.ui.reader
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.data.local.BookDatabase
+import com.badgr.orbreader.data.preferences.UserPreferencesRepository
+import com.badgr.orbreader.data.repository.BookRepository
+import com.badgr.orbreader.data.repository.ReadingSessionRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
+data class ReaderUiState(
+    val words        : List<String> = emptyList(),
+    val currentIndex : Int          = 0,
+    val wpm          : Int          = 150,
+    val isPlaying    : Boolean      = false,
+    val isLoading    : Boolean      = true
+) {
+    val currentWord : String get() = words.getOrElse(currentIndex) { "" }
+    val progress    : Float  get() = if (words.isEmpty()) 0f
+                                     else currentIndex.toFloat() / words.size
+}
+
+class ReaderViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val db        = BookDatabase.getInstance(application)
+    private val repo      = BookRepository(context = application, bookDao = db.bookDao())
+    private val sessRepo  = ReadingSessionRepository(db.readingSessionDao())
+    private val prefRepo  = UserPreferencesRepository(application)
+
+    private val _state        = MutableStateFlow(ReaderUiState())
+    val state: StateFlow<ReaderUiState> = _state.asStateFlow()
+
+    private val _bookTitle    = MutableStateFlow("")
+    val bookTitle: StateFlow<String> = _bookTitle.asStateFlow()
+
+    private val _showOrpColor = MutableStateFlow(true)
+    val showOrpColor: StateFlow<Boolean> = _showOrpColor.asStateFlow()
+
+    private var currentBookId   : String = ""
+    private var sessionStartTime: Long   = 0L
+    private var sessionStartIdx : Int    = 0
+    private var playJob         : Job?   = null
+
+    fun loadBook(bookId: String) {
+        currentBookId = bookId
+        viewModelScope.launch {
+            // Load saved WPM and ORP pref from DataStore
+            val prefs = prefRepo.preferences.first()
+            _showOrpColor.value = prefs.showOrpColor
+
+            val entity     = db.bookDao().getBookById(bookId)
+            val savedIndex = entity?.currentWordIndex ?: 0
+            _bookTitle.value = entity?.title ?: ""
+
+            val words = repo.loadWords(bookId)
+            _state.update {
+                it.copy(
+                    words        = words,
+                    currentIndex = savedIndex,
+                    wpm          = prefs.defaultWpm,
+                    isLoading    = false
+                )
+            }
+        }
+    }
+
+    fun saveProgress() {
+        if (currentBookId.isEmpty()) return
+        val s = _state.value
+        viewModelScope.launch {
+            db.bookDao().updateProgress(currentBookId, s.currentIndex)
+            // Record session if playback happened
+            if (sessionStartTime > 0L) {
+                val wordsRead = abs(s.currentIndex - sessionStartIdx)
+                val secs      = ((System.currentTimeMillis() - sessionStartTime) / 1000L).toInt()
+                sessRepo.recordSession(
+                    bookId          = currentBookId,
+                    bookTitle       = _bookTitle.value,
+                    wordsRead       = wordsRead,
+                    durationSeconds = secs,
+                    wpm             = s.wpm
+                )
+                sessionStartTime = 0L
+            }
+        }
+    }
+
+    fun toggleOrpColor(enabled: Boolean) { _showOrpColor.value = enabled }
+
+    fun togglePlayPause() {
+        val playing = !_state.value.isPlaying
+        _state.update { it.copy(isPlaying = playing) }
+        if (playing) {
+            sessionStartTime = System.currentTimeMillis()
+            sessionStartIdx  = _state.value.currentIndex
+            startPlayback()
+        } else {
+            stopPlayback()
+        }
+    }
+
+    fun adjustWpm(delta: Int) {
+        val newWpm = (_state.value.wpm + delta).coerceIn(60, 1200)
+        _state.update { it.copy(wpm = newWpm) }
+        if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
+    }
+
+    fun skipSeconds(seconds: Int) {
+        val wpm         = _state.value.wpm
+        val wordsToSkip = (wpm * abs(seconds) / 60f).roundToInt().coerceAtLeast(1)
+        val delta       = if (seconds > 0) wordsToSkip else -wordsToSkip
+        val newIndex    = (_state.value.currentIndex + delta)
+            .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
+        _state.update { it.copy(currentIndex = newIndex) }
+    }
+
+    fun seekTo(index: Int) {
+        _state.update { it.copy(currentIndex = index.coerceIn(0, it.words.lastIndex)) }
+    }
+
+    private fun startPlayback() {
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
+            while (_state.value.isPlaying) {
+                val s = _state.value
+                if (s.currentIndex >= s.words.lastIndex) {
+                    _state.update { it.copy(isPlaying = false) }
+                    break
+                }
+                delay(60_000L / s.wpm)
+                _state.update { it.copy(currentIndex = it.currentIndex + 1) }
+            }
+        }
+    }
+
+    private fun stopPlayback() { playJob?.cancel() }
+
+    override fun onCleared() {
+        saveProgress()
+        stopPlayback()
+    }
+}
+EOF
+
+STEP 12 — Add DOCX + IMAGE to Android (FileType + LibraryScreen):
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/data/model/Book.kt << 'EOF'
+package com.badgr.orbreader.data.model
+
+import java.util.UUID
+
+enum class FileType { TXT, PDF, EPUB, DOCX, IMAGE }
+
+data class Book(
+    val id        : String   = UUID.randomUUID().toString(),
+    val title     : String,
+    val fileType  : FileType,
+    val wordCount : Int,
+    val createdAt : Long     = System.currentTimeMillis(),
+    val coverPath : String?  = null
+)
+EOF
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/library/LibraryScreen.kt << 'EOF'
+package com.badgr.orbreader.ui.library
+
+import android.net.Uri
+import android.content.ContentResolver
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.data.model.FileType
+import com.badgr.orbreader.ui.theme.ReaderColors
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LibraryScreen(
+    onOpenBook: (bookId: String) -> Unit,
+    viewModel: LibraryViewModel = viewModel()
+) {
+    val books   by viewModel.books.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    // ── File pickers ──────────────────────────────────────────────────────
+    val txtPicker  = rememberFilePicker("text/plain")             { u, n -> viewModel.importTxt(u, n)  }
+    val pdfPicker  = rememberFilePicker("application/pdf")        { u, n -> viewModel.importPdf(u, n)  }
+    val epubPicker = rememberFilePicker("application/epub+zip")   { u, n -> viewModel.importEpub(u, n) }
+    val docxPicker = rememberFilePicker(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) { u, n -> viewModel.importDocx(u, n) }
+    val imagePicker = rememberFilePicker("image/*")               { u, n -> viewModel.importImage(u, n) }
+
+    // ── Error dialog ──────────────────────────────────────────────────────
+    if (uiState is LibraryUiState.Error) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearError,
+            title = { Text("Import failed") },
+            text  = { Text((uiState as LibraryUiState.Error).message) },
+            confirmButton   = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+        )
+    }
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title  = { Text("BADGR Bolt Library", color = ReaderColors.textWarm) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // ── Import buttons row 1 ───────────────────────────────────────
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ImportBtn("TXT",  Modifier.weight(1f), "Import text file")   { txtPicker.launch("text/plain") }
+                ImportBtn("PDF",  Modifier.weight(1f), "Import PDF file")    { pdfPicker.launch("application/pdf") }
+                ImportBtn("EPUB", Modifier.weight(1f), "Import EPUB file")   { epubPicker.launch("application/epub+zip") }
+            }
+            // ── Import buttons row 2 ───────────────────────────────────────
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ImportBtn("DOCX",  Modifier.weight(1f), "Import Word document") {
+                    docxPicker.launch("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                }
+                ImportBtn("Image", Modifier.weight(1f), "Import image for OCR") {
+                    imagePicker.launch("image/*")
+                }
+            }
+
+            if (uiState is LibraryUiState.Converting) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color       = ReaderColors.orpFocal
+                    )
+                    Text(
+                        "Converting \"${(uiState as LibraryUiState.Converting).fileName}\"…",
+                        color = ReaderColors.textDimmed
+                    )
+                }
+            }
+
+            HorizontalDivider(color = ReaderColors.guideLine)
+
+            if (books.isEmpty()) {
+                Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("No books yet. Import a file above.", color = ReaderColors.textDimmed)
+                }
+            } else {
+                LazyColumn {
+                    items(books, key = { it.id }) { book ->
+                        BookRow(
+                            book     = book,
+                            onClick  = { onOpenBook(book.id) },
+                            onDelete = { viewModel.deleteBook(book) }
+                        )
+                        HorizontalDivider(color = ReaderColors.guideLine.copy(alpha = 0.3f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImportBtn(
+    label       : String,
+    modifier    : Modifier,
+    description : String,
+    onClick     : () -> Unit
+) {
+    OutlinedButton(
+        onClick  = onClick,
+        modifier = modifier.semantics { contentDescription = description },
+        colors   = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
+    ) { Text("+ $label") }
+}
+
+@Composable
+private fun rememberFilePicker(
+    mimeType: String,
+    onPicked: (uri: Uri, fileName: String) -> Unit
+): ManagedLauncher {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val name = resolveFileName(context.contentResolver, uri) ?: "document"
+        onPicked(uri, name)
+    }
+    return remember(launcher) { ManagedLauncher(launcher) }
+}
+
+private class ManagedLauncher(private val l: ActivityResultLauncher<String>) {
+    fun launch(mime: String) = l.launch(mime)
+}
+
+private fun resolveFileName(resolver: ContentResolver, uri: Uri): String? {
+    resolver.query(uri, null, null, null, null)?.use { c ->
+        if (c.moveToFirst()) {
+            val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0) return c.getString(idx)
+        }
+    }
+    return uri.lastPathSegment
+}
+EOF
+
+STEP 13 — LibraryViewModel: add DOCX and IMAGE import methods:
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/src/main/java/com/badgr/orbreader/ui/library/LibraryViewModel.kt << 'EOF'
+package com.badgr.orbreader.ui.library
+
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.data.local.BookDatabase
+import com.badgr.orbreader.data.model.Book
+import com.badgr.orbreader.data.model.FileType
+import com.badgr.orbreader.data.repository.BookRepository
+import com.badgr.orbreader.data.repository.ImportResult
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+sealed class LibraryUiState {
+    object Idle : LibraryUiState()
+    data class Converting(val fileName: String) : LibraryUiState()
+    data class Error(val message: String) : LibraryUiState()
+}
+
+class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repo = BookRepository(
+        context = application,
+        bookDao = BookDatabase.getInstance(application).bookDao()
+    )
+
+    val books: StateFlow<List<Book>> = repo.books
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Idle)
+    val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+
+    fun importTxt(uri: Uri, name: String)   = launch(name) { repo.importTxt(uri, name) }
+    fun importPdf(uri: Uri, name: String)   = launch(name) { repo.importRemote(uri, name, FileType.PDF,   "application/pdf") }
+    fun importEpub(uri: Uri, name: String)  = launch(name) { repo.importRemote(uri, name, FileType.EPUB,  "application/epub+zip") }
+    fun importDocx(uri: Uri, name: String)  = launch(name) {
+        repo.importRemote(
+            uri, name, FileType.DOCX,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    }
+    fun importImage(uri: Uri, name: String) = launch(name) {
+        repo.importRemote(uri, name, FileType.IMAGE, "image/*")
+    }
+
+    fun deleteBook(book: Book) = viewModelScope.launch { repo.deleteBook(book) }
+    fun clearError()           { _uiState.value = LibraryUiState.Idle }
+
+    private fun launch(fileName: String, block: suspend () -> ImportResult) {
+        viewModelScope.launch {
+            _uiState.value = LibraryUiState.Converting(fileName)
+            _uiState.value = when (val r = block()) {
+                is ImportResult.Success -> LibraryUiState.Idle
+                is ImportResult.Error   -> LibraryUiState.Error(r.message)
+            }
+        }
+    }
+}
+EOF
+
+STEP 14 — Backend: add DOCX + image OCR to converter.py:
+bashcat > /home/t0n34781/OrbReaderBackend/badgr_text_service/converter.py << 'EOF'
+"""
+BADGR Bolt Text Conversion Service — converter.py
+Supports: PDF (text + OCR fallback), EPUB (Calibre), DOCX, CSV, Image (OCR)
+"""
+
+import mimetypes
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+# ── Type detection ────────────────────────────────────────────────────────────
+
+def detect_type(path: str) -> str:
+    ext  = Path(path).suffix.lower()
+    mime = mimetypes.guess_type(path)[0] or ""
+
+    if ext == ".pdf"  or "pdf"  in mime: return "pdf"
+    if ext in (".epub", ".mobi", ".azw3"): return "epub"
+    if ext in (".docx",)                : return "docx"
+    if ext == ".csv"                    : return "csv"
+    if ext in (".txt",)                 : return "txt"
+    if ext in (".png", ".jpg", ".jpeg",
+               ".tiff", ".tif", ".bmp",
+               ".webp", ".gif")         : return "image"
+    return "unknown"
+
+
+# ── PDF ───────────────────────────────────────────────────────────────────────
+
+def is_likely_scanned_pdf(path: str) -> bool:
+    try:
+        import fitz
+        doc   = fitz.open(path)
+        chars = sum(len(doc[i].get_text()) for i in range(min(3, len(doc))))
+        doc.close()
+        return chars < 100
+    except Exception:
+        return False
+
+def pdf_to_text(path: str) -> str:
+    import fitz
+    doc  = fitz.open(path)
+    text = "\n".join(page.get_text() for page in doc)
+    doc.close()
+    return text
+
+def pdf_to_text_with_ocr(path: str) -> str:
+    tmp_out = path.replace(".pdf", "_ocr.pdf")
+    try:
+        subprocess.run(
+            ["ocrmypdf", "--skip-text", path, tmp_out],
+            check=True, capture_output=True
+        )
+        return pdf_to_text(tmp_out)
+    finally:
+        if os.path.exists(tmp_out):
+            os.remove(tmp_out)
+
+
+# ── EPUB ──────────────────────────────────────────────────────────────────────
+
+def epub_to_text_with_calibre(path: str) -> str:
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        subprocess.run(
+            ["ebook-convert", path, tmp_path],
+            check=True, capture_output=True
+        )
+        return Path(tmp_path).read_text(encoding="utf-8", errors="replace")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+# ── DOCX ──────────────────────────────────────────────────────────────────────
+
+def docx_to_text(path: str) -> str:
+    from docx import Document
+    doc  = Document(path)
+    return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+
+
+# ── CSV ───────────────────────────────────────────────────────────────────────
+
+def csv_to_text(path: str) -> str:
+    import csv
+    rows = []
+    with open(path, newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.reader(f):
+            rows.append(" | ".join(row))
+    return "\n".join(rows)
+
+
+# ── TXT ───────────────────────────────────────────────────────────────────────
+
+def txt_to_text(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8", errors="replace")
+
+
+# ── Image OCR ─────────────────────────────────────────────────────────────────
+
+def image_to_text(path: str) -> str:
+    """
+    OCR an image using pytesseract (requires tesseract-ocr system package).
+    Falls back to a helpful error message if not installed.
+    """
+    try:
+        from PIL import Image
+        import pytesseract
+        img  = Image.open(path)
+        text = pytesseract.image_to_string(img)
+        return text.strip()
+    except ImportError:
+        raise RuntimeError(
+            "pytesseract or Pillow not installed. "
+            "Add 'pytesseract' and 'Pillow' to requirements.txt."
+        )
+    except Exception as e:
+        raise RuntimeError(f"Image OCR failed: {e}")
+
+
+# ── Central router ────────────────────────────────────────────────────────────
+
+def convert(path: str, use_ocr: bool = False) -> str:
+    doc_type = detect_type(path)
+
+    if doc_type == "pdf":
+        if use_ocr or is_likely_scanned_pdf(path):
+            return pdf_to_text_with_ocr(path)
+        return pdf_to_text(path)
+
+    if doc_type == "epub":
+        return epub_to_text_with_calibre(path)
+
+    if doc_type == "docx":
+        return docx_to_text(path)
+
+    if doc_type == "csv":
+        return csv_to_text(path)
+
+    if doc_type == "txt":
+        return txt_to_text(path)
+
+    if doc_type == "image":
+        return image_to_text(path)
+
+    raise ValueError(f"Unsupported file type: {doc_type} ({path})")
+EOF
+bashcat > /home/t0n34781/OrbReaderBackend/badgr_text_service/requirements.txt << 'EOF'
+fastapi
+uvicorn[standard]
+pymupdf
+pdfplumber
+python-docx
+pytesseract
+Pillow
+EOF
+
+STEP 15 — ProGuard rules (protect Retrofit + Gson + Room for release):
+bashcat > /home/t0n34781/AndroidStudioProjects/badgr_bolt/app/proguard-rules.pro << 'EOF'
+# ── Retrofit ──────────────────────────────────────────────────────────────────
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepattributes Signature
+-keepattributes Exceptions
+
+# ── Gson ──────────────────────────────────────────────────────────────────────
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# ── Room ──────────────────────────────────────────────────────────────────────
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# ── OkHttp ────────────────────────────────────────────────────────────────────
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+
+# ── App model classes (prevent Gson stripping) ────────────────────────────────
+-keep class com.badgr.orbreader.data.model.** { *; }
+-keep class com.badgr.orbreader.data.local.** { *; }
+-keep class com.badgr.orbreader.data.remote.** { *; }
+
+# ── DataStore ─────────────────────────────────────────────────────────────────
+-keep class androidx.datastore.** { *; }
+
+# ── Coil ─────────────────────────────────────────────────────────────────────
+-dontwarn coil.**
+EOF
+
+STEP 16 — Build and install:
+bashcd /home/t0n34781/AndroidStudioProjects/badgr_bolt && \
+./gradlew assembleDebug 2>&1 | tail -40 && \
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+What this rollout locks in:
+AreaStatusSettings persistence (WPM, font, color)DataStore, survives reinstallReading sessions recordedRoom, auto on back/stopStats screen with real dataWired to session daoPro gateMock open, one-line flip to gateDOCX importAndroid + backendImage OCR importAndroid + backendProGuard for releaseProtects Retrofit/Gson/RoomAccessibilitycontentDescription on all controlsVersion in SettingsBuildConfig.VERSION_NAME/CODE
+Once the build is clean, commit everything to feature/freemium-core and open a PR to main before starting the premium feature branch.
