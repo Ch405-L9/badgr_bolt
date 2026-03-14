@@ -1,6 +1,8 @@
 package com.badgr.orbreader
 
 import android.os.Bundle
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -103,6 +105,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val purchaseManager = (application as OrbReaderApp).purchaseManager
+        if (purchaseManager.isConnected.value) {
+            lifecycleScope.launch { purchaseManager.queryExistingPurchases() }
         }
     }
 }
