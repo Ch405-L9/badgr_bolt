@@ -26,6 +26,15 @@
 ### Next Milestone
 - 2.5.1: Punctuation pauses
 
+## [2.5.1] — 2026-03-14
+### Changed
+- CloudSyncManager: removed unused requirePro() method
+- LibraryViewModel: added TAG constant for consistent logging
+- CloudSyncManager: extracted Firestore collection names to constants (COLLECTION_USERS, COLLECTION_BOOKS, COLLECTION_PROGRESS)
+### Notes
+- Code maintainability improvements with no user-facing changes
+- Commit: 97c6096
+
 ## [2.5.0] — 2026-03-14
 ### Added
 - ChunkWordDisplay.kt: composable for 1-4 word chunk reading
