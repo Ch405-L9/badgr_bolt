@@ -75,6 +75,29 @@ fun LibraryScreen(
         )
     }
 
+    if (uiState is LibraryUiState.BookLimitReached) {
+        AlertDialog(
+            onDismissRequest = viewModel::clearError,
+            containerColor   = MaterialTheme.colorScheme.surface,
+            title = { Text("Library limit reached", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+            text  = {
+                Text(
+                    "Free accounts can store up to ${com.badgr.orbreader.billing.ProGate.FREE_BOOK_LIMIT} books. " +
+                    "Upgrade to BADGR Bolt Pro for unlimited imports, cloud sync, and full reading analytics."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::clearError) {
+                    Text("Upgrade", color = com.badgr.orbreader.ui.theme.ReaderColors.orpFocal,
+                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::clearError) { Text("Not now") }
+            }
+        )
+    }
+
     // ── Format picker bottom sheet ────────────────────────────────────────
     if (showFormatSheet) {
         ModalBottomSheet(

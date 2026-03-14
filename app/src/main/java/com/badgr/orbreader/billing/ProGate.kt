@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 object ProGate {
 
     // ── Toggle this to false when billing goes live ───────────────────────────
-    private const val PRIVATE_ROLLOUT_ALL_OPEN = true
+    private const val PRIVATE_ROLLOUT_ALL_OPEN = false
 
     // ── Free tier limits ──────────────────────────────────────────────────────
     const val FREE_BOOK_LIMIT = 5

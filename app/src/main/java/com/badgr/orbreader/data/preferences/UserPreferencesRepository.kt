@@ -22,7 +22,8 @@ data class UserPreferences(
     val orpColorIndex: Int     = 0,
     val isPro        : Boolean = false,
     val themeMode    : Int     = THEME_SYSTEM,
-    val fontIndex    : Int     = 0     // 0=System Mono, 1=JetBrains, 2=Literata, 3=Merriweather, 4=Atkinson, 5=OpenSans
+    val fontIndex    : Int     = 0,
+    val chunkSize    : Int     = 1
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -35,6 +36,7 @@ class UserPreferencesRepository(private val context: Context) {
         val IS_PRO         = booleanPreferencesKey("is_pro")
         val THEME_MODE     = intPreferencesKey("theme_mode")
         val FONT_INDEX     = intPreferencesKey("font_index")
+        val CHUNK_SIZE     = intPreferencesKey("chunk_size")
     }
 
     val preferences: Flow<UserPreferences> = context.dataStore.data
@@ -50,7 +52,8 @@ class UserPreferencesRepository(private val context: Context) {
                 orpColorIndex = prefs[Keys.ORP_COLOR_IDX]  ?: 0,
                 isPro         = prefs[Keys.IS_PRO]         ?: false,
                 themeMode     = prefs[Keys.THEME_MODE]     ?: THEME_SYSTEM,
-                fontIndex     = prefs[Keys.FONT_INDEX]     ?: 0
+                fontIndex     = prefs[Keys.FONT_INDEX]     ?: 0,
+                chunkSize     = prefs[Keys.CHUNK_SIZE]     ?: 1
             )
         }
 
@@ -61,4 +64,5 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setIsPro(unlocked: Boolean)    { context.dataStore.edit { it[Keys.IS_PRO]         = unlocked } }
     suspend fun setThemeMode(mode: Int)        { context.dataStore.edit { it[Keys.THEME_MODE]     = mode.coerceIn(0, 2) } }
     suspend fun setFontIndex(index: Int)       { context.dataStore.edit { it[Keys.FONT_INDEX]     = index.coerceIn(0, 5) } }
+    suspend fun setChunkSize(size: Int)        { context.dataStore.edit { it[Keys.CHUNK_SIZE]     = size.coerceIn(1, 4) } }
 }

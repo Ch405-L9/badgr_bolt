@@ -12,8 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -26,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.achievements.AchievementDef
 import com.badgr.orbreader.achievements.AchievementDefinitions
 import com.badgr.orbreader.achievements.BoltRank
+import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.local.ReadingSessionEntity
 import com.badgr.orbreader.ui.theme.ReaderColors
 import java.text.SimpleDateFormat
@@ -81,14 +80,57 @@ fun StatsScreen(vm: StatsViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ── BOLT RANK ─────────────────────────────────────────────────
-            item {
-                Spacer(Modifier.height(4.dp))
-                BoltRankCard(rank = snapshot.boltRank)
+            // ── Pro gate — upgrade CTA for free users ──────────────────
+            if (!ProGate.isPro) {
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color    = ReaderColors.orpFocal.copy(alpha = 0.08f),
+                        shape    = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                        border   = androidx.compose.foundation.BorderStroke(
+                            1.dp, ReaderColors.orpFocal.copy(alpha = 0.30f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                "Unlock Full Analytics",
+                                color      = ReaderColors.textWarm,
+                                fontWeight = FontWeight.Bold,
+                                fontSize   = 16.sp
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "BADGR Bolt Pro unlocks your complete reading history, " +
+                                "WPM charts, Bolt Rank, achievements, and cloud sync across devices.",
+                                color    = ReaderColors.textDimmed,
+                                fontSize = 13.sp
+                            )
+                            Spacer(Modifier.height(14.dp))
+                            Button(
+                                onClick        = { /* navigate to account */ },
+                                colors         = ButtonDefaults.buttonColors(
+                                    containerColor = ReaderColors.orpFocal,
+                                    contentColor   = ReaderColors.background
+                                )
+                            ) {
+                                Text("Upgrade to Pro", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
             }
 
-            // ── Achievement header ────────────────────────────────────────
-            item {
+            // ── BOLT RANK ─────────────────────────────────────────────────
+            if (ProGate.isPro) {
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    BoltRankCard(rank = snapshot.boltRank)
+                }
+            }
+
+            // ── Achievement header (Pro only) ─────────────────────────────
+            if (ProGate.isPro) item {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,8 +151,7 @@ fun StatsScreen(vm: StatsViewModel = viewModel()) {
                 }
             }
 
-            // ── Achievement grid ──────────────────────────────────────────
-            items(achievementRows) { row ->
+            if (ProGate.isPro) items(achievementRows) { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -207,12 +248,7 @@ private fun BoltRankCard(rank: BoltRank) {
                 Text(rank.label,    fontSize = 30.sp, fontWeight = FontWeight.Black, color = ReaderColors.textWarm)
                 Text(rank.subtitle, fontSize = 12.sp, color = ReaderColors.textDimmed)
             }
-            // Use launcher icon as the rank visual
-            androidx.compose.foundation.Image(
-                painter            = painterResource(id = android.R.mipmap.sym_def_app_icon),
-                contentDescription = rank.label,
-                modifier           = Modifier.size(52.dp)
-            )
+            Text(rank.emoji, fontSize = 44.sp)
         }
     }
 }
