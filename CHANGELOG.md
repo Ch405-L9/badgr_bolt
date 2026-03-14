@@ -24,7 +24,7 @@
 - Regression tested on Play Console license tester before tag
 - This commit marks billing going live
 ### Next Milestone
-- 2.5.1: Punctuation pauses
+- 2.5.2: Punctuation pauses
 
 ## [2.5.1] — 2026-03-14
 ### Changed
@@ -52,8 +52,8 @@
 - SettingsScreen: version string updated to v2.5.0 (build 6)
 - SettingsScreen: removed typographic special characters to prevent Kotlin compile issues
 ### Next Milestone
-- 2.5.1: Punctuation pauses (smart slowing at . , ? !)
-- 2.5.2: Bookmarks and notes
+- 2.5.2: Punctuation pauses (smart slowing at . , ? !)
+- 2.5.3: Bookmarks and notes
 
 ## [2.4.4] — 2026-03-14
 ### Added
