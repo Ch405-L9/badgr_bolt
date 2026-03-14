@@ -16,27 +16,31 @@ const val THEME_LIGHT  = 1
 const val THEME_DARK   = 2
 
 data class UserPreferences(
-    val defaultWpm   : Int     = 150,
-    val fontSize     : Int     = 46,
-    val showOrpColor : Boolean = true,
-    val orpColorIndex: Int     = 0,
-    val isPro        : Boolean = false,
-    val themeMode    : Int     = THEME_SYSTEM,
-    val fontIndex    : Int     = 0,
-    val chunkSize    : Int     = 1
+    val defaultWpm              : Int     = 150,
+    val fontSize                : Int     = 46,
+    val showOrpColor            : Boolean = true,
+    val orpColorIndex           : Int     = 0,
+    val isPro                   : Boolean = false,
+    val themeMode               : Int     = THEME_SYSTEM,
+    val fontIndex               : Int     = 0,
+    val chunkSize               : Int     = 1,
+    val sentencePauseMultiplier : Float   = 2.0f,
+    val clausePauseMultiplier   : Float   = 1.5f
 )
 
 class UserPreferencesRepository(private val context: Context) {
 
     private object Keys {
-        val DEFAULT_WPM    = intPreferencesKey("default_wpm")
-        val FONT_SIZE      = intPreferencesKey("font_size")
-        val SHOW_ORP_COLOR = booleanPreferencesKey("show_orp_color")
-        val ORP_COLOR_IDX  = intPreferencesKey("orp_color_index")
-        val IS_PRO         = booleanPreferencesKey("is_pro")
-        val THEME_MODE     = intPreferencesKey("theme_mode")
-        val FONT_INDEX     = intPreferencesKey("font_index")
-        val CHUNK_SIZE     = intPreferencesKey("chunk_size")
+        val DEFAULT_WPM              = intPreferencesKey("default_wpm")
+        val FONT_SIZE                = intPreferencesKey("font_size")
+        val SHOW_ORP_COLOR           = booleanPreferencesKey("show_orp_color")
+        val ORP_COLOR_IDX            = intPreferencesKey("orp_color_index")
+        val IS_PRO                   = booleanPreferencesKey("is_pro")
+        val THEME_MODE               = intPreferencesKey("theme_mode")
+        val FONT_INDEX               = intPreferencesKey("font_index")
+        val CHUNK_SIZE               = intPreferencesKey("chunk_size")
+        val SENTENCE_PAUSE_MULT      = floatPreferencesKey("sentence_pause_multiplier")
+        val CLAUSE_PAUSE_MULT        = floatPreferencesKey("clause_pause_multiplier")
     }
 
     val preferences: Flow<UserPreferences> = context.dataStore.data
@@ -46,23 +50,27 @@ class UserPreferencesRepository(private val context: Context) {
         }
         .map { prefs ->
             UserPreferences(
-                defaultWpm    = prefs[Keys.DEFAULT_WPM]    ?: 150,
-                fontSize      = prefs[Keys.FONT_SIZE]      ?: 46,
-                showOrpColor  = prefs[Keys.SHOW_ORP_COLOR] ?: true,
-                orpColorIndex = prefs[Keys.ORP_COLOR_IDX]  ?: 0,
-                isPro         = prefs[Keys.IS_PRO]         ?: false,
-                themeMode     = prefs[Keys.THEME_MODE]     ?: THEME_SYSTEM,
-                fontIndex     = prefs[Keys.FONT_INDEX]     ?: 0,
-                chunkSize     = prefs[Keys.CHUNK_SIZE]     ?: 1
+                defaultWpm              = prefs[Keys.DEFAULT_WPM]         ?: 150,
+                fontSize                = prefs[Keys.FONT_SIZE]           ?: 46,
+                showOrpColor            = prefs[Keys.SHOW_ORP_COLOR]      ?: true,
+                orpColorIndex           = prefs[Keys.ORP_COLOR_IDX]       ?: 0,
+                isPro                   = prefs[Keys.IS_PRO]              ?: false,
+                themeMode               = prefs[Keys.THEME_MODE]          ?: THEME_SYSTEM,
+                fontIndex               = prefs[Keys.FONT_INDEX]          ?: 0,
+                chunkSize               = prefs[Keys.CHUNK_SIZE]          ?: 1,
+                sentencePauseMultiplier = prefs[Keys.SENTENCE_PAUSE_MULT] ?: 2.0f,
+                clausePauseMultiplier   = prefs[Keys.CLAUSE_PAUSE_MULT]   ?: 1.5f
             )
         }
 
-    suspend fun setDefaultWpm(wpm: Int)       { context.dataStore.edit { it[Keys.DEFAULT_WPM]    = wpm.coerceIn(60, 1200) } }
-    suspend fun setFontSize(size: Int)         { context.dataStore.edit { it[Keys.FONT_SIZE]      = size.coerceIn(28, 72) } }
-    suspend fun setShowOrpColor(show: Boolean) { context.dataStore.edit { it[Keys.SHOW_ORP_COLOR] = show } }
-    suspend fun setOrpColorIndex(index: Int)   { context.dataStore.edit { it[Keys.ORP_COLOR_IDX]  = index.coerceIn(0, 4) } }
-    suspend fun setIsPro(unlocked: Boolean)    { context.dataStore.edit { it[Keys.IS_PRO]         = unlocked } }
-    suspend fun setThemeMode(mode: Int)        { context.dataStore.edit { it[Keys.THEME_MODE]     = mode.coerceIn(0, 2) } }
-    suspend fun setFontIndex(index: Int)       { context.dataStore.edit { it[Keys.FONT_INDEX]     = index.coerceIn(0, 5) } }
-    suspend fun setChunkSize(size: Int)        { context.dataStore.edit { it[Keys.CHUNK_SIZE]     = size.coerceIn(1, 4) } }
+    suspend fun setDefaultWpm(wpm: Int)                    { context.dataStore.edit { it[Keys.DEFAULT_WPM]         = wpm.coerceIn(60, 1200) } }
+    suspend fun setFontSize(size: Int)                     { context.dataStore.edit { it[Keys.FONT_SIZE]           = size.coerceIn(28, 72) } }
+    suspend fun setShowOrpColor(show: Boolean)             { context.dataStore.edit { it[Keys.SHOW_ORP_COLOR]      = show } }
+    suspend fun setOrpColorIndex(index: Int)               { context.dataStore.edit { it[Keys.ORP_COLOR_IDX]       = index.coerceIn(0, 4) } }
+    suspend fun setIsPro(unlocked: Boolean)                { context.dataStore.edit { it[Keys.IS_PRO]              = unlocked } }
+    suspend fun setThemeMode(mode: Int)                    { context.dataStore.edit { it[Keys.THEME_MODE]          = mode.coerceIn(0, 2) } }
+    suspend fun setFontIndex(index: Int)                   { context.dataStore.edit { it[Keys.FONT_INDEX]          = index.coerceIn(0, 5) } }
+    suspend fun setChunkSize(size: Int)                    { context.dataStore.edit { it[Keys.CHUNK_SIZE]          = size.coerceIn(1, 4) } }
+    suspend fun setSentencePauseMultiplier(mult: Float)    { context.dataStore.edit { it[Keys.SENTENCE_PAUSE_MULT] = mult.coerceIn(1.0f, 3.0f) } }
+    suspend fun setClausePauseMultiplier(mult: Float)      { context.dataStore.edit { it[Keys.CLAUSE_PAUSE_MULT]   = mult.coerceIn(1.0f, 3.0f) } }
 }

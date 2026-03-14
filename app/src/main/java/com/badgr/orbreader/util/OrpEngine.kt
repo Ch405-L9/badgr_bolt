@@ -35,6 +35,20 @@ object OrpEngine {
     }
 
     /**
+     * Returns true if the word ends with sentence-ending punctuation.
+     */
+    fun hasSentenceEndingPunctuation(word: String): Boolean {
+        return word.lastOrNull() in setOf('.', '?', '!')
+    }
+
+    /**
+     * Returns true if the word ends with clause-separating punctuation.
+     */
+    fun hasClausePunctuation(word: String): Boolean {
+        return word.lastOrNull() in setOf(',', ';', ':')
+    }
+
+    /**
      * Splits a raw word into ORP segments. 
      * Handles long word hyphenation to prevent focal offset.
      */

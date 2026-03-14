@@ -82,6 +82,67 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                 }
             }
 
+            // ── Punctuation Pauses ────────────────────────────────────────
+            item {
+                SettingSection(title = "Punctuation Pauses") {
+                    Column {
+                        Text(
+                            "Automatically slow down at punctuation for better comprehension.",
+                            color    = ReaderColors.textDimmed,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        
+                        // Sentence endings (. ? !)
+                        Text(
+                            "Sentence Endings (. ? !)  —  ${String.format("%.1f", prefs.sentencePauseMultiplier)}x",
+                            color      = ReaderColors.textWarm,
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Slider(
+                            value         = prefs.sentencePauseMultiplier,
+                            onValueChange = { vm.setSentencePauseMultiplier(it) },
+                            valueRange    = 1.0f..3.0f,
+                            steps         = 19,
+                            colors        = SliderDefaults.colors(
+                                thumbColor       = ReaderColors.orpFocal,
+                                activeTrackColor = ReaderColors.orpFocal
+                            )
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Clause separators (, ; :)
+                        Text(
+                            "Clause Separators (, ; :)  —  ${String.format("%.1f", prefs.clausePauseMultiplier)}x",
+                            color      = ReaderColors.textWarm,
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Slider(
+                            value         = prefs.clausePauseMultiplier,
+                            onValueChange = { vm.setClausePauseMultiplier(it) },
+                            valueRange    = 1.0f..3.0f,
+                            steps         = 19,
+                            colors        = SliderDefaults.colors(
+                                thumbColor       = ReaderColors.orpFocal,
+                                activeTrackColor = ReaderColors.orpFocal
+                            )
+                        )
+                        
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "1.0x = no pause, 2.0x = double the normal word duration",
+                            color    = ReaderColors.textDimmed,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
             // ── Default Words at a Time ───────────────────────────────────
             item {
                 SettingSection(title = "Default Words at a Time") {
@@ -310,7 +371,7 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
             // ── App Version ───────────────────────────────────────────────
             item {
                 Text(
-                    "BADGR Bolt v2.5.0 (build 6)",
+                    "BADGR Bolt v2.5.1 (build 7)",
                     color    = ReaderColors.textDimmed,
                     fontSize = 11.sp,
                     modifier = Modifier.padding(bottom = 16.dp)

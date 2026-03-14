@@ -65,6 +65,14 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         .map { it.chunkSize }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
 
+    val sentencePauseMultiplier: StateFlow<Float> = prefsRepo.preferences
+        .map { it.sentencePauseMultiplier }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 2.0f)
+
+    val clausePauseMultiplier: StateFlow<Float> = prefsRepo.preferences
+        .map { it.clausePauseMultiplier }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.5f)
+
     private val _newAchievements = MutableStateFlow<List<String>>(emptyList())
     val newAchievements: StateFlow<List<String>> = _newAchievements.asStateFlow()
 
@@ -212,8 +220,21 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     sessionActiveMs += System.currentTimeMillis() - lastPlayStartMs
                     break
                 }
-                // Delay scales with chunk size: showing N words takes N word-intervals
-                delay((60_000L * chunk) / s.wpm)
+                
+                // Calculate base delay for this chunk
+                val baseDelay = (60_000L * chunk) / s.wpm
+                
+                // Apply punctuation pause multiplier to the last word in the chunk
+                val lastWordInChunk = s.words.getOrNull(s.currentIndex + chunk - 1) ?: ""
+                val pauseMultiplier = when {
+                    OrpEngine.hasSentenceEndingPunctuation(lastWordInChunk) -> sentencePauseMultiplier.value
+                    OrpEngine.hasClausePunctuation(lastWordInChunk) -> clausePauseMultiplier.value
+                    else -> 1.0f
+                }
+                
+                val adjustedDelay = (baseDelay * pauseMultiplier).toLong()
+                
+                delay(adjustedDelay)
                 _state.update { it.copy(currentIndex = (it.currentIndex + chunk).coerceAtMost(it.words.lastIndex)) }
             }
         }

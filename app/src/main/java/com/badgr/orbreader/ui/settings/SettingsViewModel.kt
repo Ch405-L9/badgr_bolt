@@ -19,11 +19,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         UserPreferences()
     )
 
-    fun setWpm(wpm: Int)               = viewModelScope.launch { repo.setDefaultWpm(wpm) }
-    fun setFontSize(size: Int)         = viewModelScope.launch { repo.setFontSize(size) }
-    fun setShowOrpColor(show: Boolean) = viewModelScope.launch { repo.setShowOrpColor(show) }
-    fun setOrpColorIndex(idx: Int)     = viewModelScope.launch { repo.setOrpColorIndex(idx) }
-    fun setThemeMode(mode: Int)        = viewModelScope.launch { repo.setThemeMode(mode) }
-    fun setFontIndex(idx: Int)         = viewModelScope.launch { repo.setFontIndex(idx) }
-    fun setChunkSize(size: Int)        = viewModelScope.launch { repo.setChunkSize(size) }
+    fun setWpm(wpm: Int)                         = viewModelScope.launch { repo.setDefaultWpm(wpm) }
+    fun setFontSize(size: Int)                   = viewModelScope.launch { repo.setFontSize(size) }
+    fun setShowOrpColor(show: Boolean)           = viewModelScope.launch { repo.setShowOrpColor(show) }
+    fun setOrpColorIndex(idx: Int)               = viewModelScope.launch { repo.setOrpColorIndex(idx) }
+    fun setThemeMode(mode: Int)                  = viewModelScope.launch { repo.setThemeMode(mode) }
+    fun setFontIndex(idx: Int)                   = viewModelScope.launch { repo.setFontIndex(idx) }
+    fun setChunkSize(size: Int)                  = viewModelScope.launch { repo.setChunkSize(size) }
+    fun setSentencePauseMultiplier(mult: Float)  = viewModelScope.launch { repo.setSentencePauseMultiplier(mult) }
+    fun setClausePauseMultiplier(mult: Float)    = viewModelScope.launch { repo.setClausePauseMultiplier(mult) }
 }
