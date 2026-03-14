@@ -50,6 +50,30 @@
 - User-configurable multipliers persist to DataStore
 - Commit: 9cbd5aa
 
+## [2.5.2] — 2026-03-14
+### Added
+- Punctuation pause system: reader automatically slows at sentence boundaries
+- OrpEngine: hasSentenceEndingPunctuation() and hasClausePunctuation() helpers
+- UserPreferences: sentencePauseMultiplier (default 2.0x) and clausePauseMultiplier (default 1.5x)
+- UserPreferencesRepository: setSentencePauseMultiplier() and setClausePauseMultiplier()
+- SettingsViewModel: expose punctuation pause multiplier setters
+- SettingsScreen: Punctuation Pauses section with dual sliders (1.0x–3.0x range)
+  - Sentence endings (. ? !) slider with live multiplier display
+  - Clause separators (, ; :) slider with live multiplier display
+- ReaderViewModel: sentencePauseMultiplier and clausePauseMultiplier StateFlows from DataStore
+- ReaderViewModel: playback logic detects punctuation in last word of chunk, applies multiplier to delay
+### Changed
+- Reading experience now respects natural language rhythm
+- Sentence endings pause 2.0x by default for comprehension
+- Clause separators pause 1.5x by default for natural pacing
+- Chunk reading applies pause to final word in each chunk
+### Fixed
+- gradle.properties: added android.useAndroidX=true and android.enableJetifier=true (build configuration)
+### Notes
+- Punctuation detection works seamlessly with 1-4 word chunk sizes
+- User-configurable multipliers persist to DataStore
+- Commit: 9cbd5aa
+
 ## [2.5.1] — 2026-03-14
 ### Changed
 - CloudSyncManager: removed unused requirePro() method
