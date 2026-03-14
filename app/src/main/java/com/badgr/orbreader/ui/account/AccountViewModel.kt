@@ -1,21 +1,30 @@
 package com.badgr.orbreader.ui.account
 
-import androidx.lifecycle.ViewModel
+import android.app.Activity
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.OrbReaderApp
+import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 sealed class AccountUiState {
-    object SignedOut                    : AccountUiState()
-    object Loading                      : AccountUiState()
+    object SignedOut                       : AccountUiState()
+    object Loading                         : AccountUiState()
     data class SignedIn(val email: String) : AccountUiState()
     data class Error(val message: String)  : AccountUiState()
 }
 
-class AccountViewModel : ViewModel() {
+class AccountViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val purchaseManager =
+        (application as OrbReaderApp).purchaseManager
 
     private val _uiState = MutableStateFlow<AccountUiState>(
         if (CloudSyncManager.isSignedIn)
@@ -24,6 +33,10 @@ class AccountViewModel : ViewModel() {
             AccountUiState.SignedOut
     )
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
+
+    /** Reactive Pro entitlement — sourced from ProGate which is kept in sync by OrbReaderApp. */
+    val isPro: StateFlow<Boolean> = ProGate.isProFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ProGate.isPro)
 
     fun signIn(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
@@ -72,5 +85,13 @@ class AccountViewModel : ViewModel() {
 
     fun clearError() {
         _uiState.value = AccountUiState.SignedOut
+    }
+
+    fun launchSubscription(activity: Activity) {
+        purchaseManager.launchSubscriptionFlow(activity)
+    }
+
+    fun launchLifetime(activity: Activity) {
+        purchaseManager.launchLifetimeFlow(activity)
     }
 }

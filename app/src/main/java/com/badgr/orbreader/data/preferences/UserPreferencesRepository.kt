@@ -15,7 +15,8 @@ data class UserPreferences(
     val defaultWpm   : Int     = 150,
     val fontSize     : Int     = 46,
     val showOrpColor : Boolean = true,
-    val orpColorIndex: Int     = 0     // 0=cyan, 1=pink, 2=green, 3=amber
+    val orpColorIndex: Int     = 0,     // 0=cyan, 1=pink, 2=green, 3=amber
+    val isPro        : Boolean = false  // persisted Pro entitlement
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -25,6 +26,7 @@ class UserPreferencesRepository(private val context: Context) {
         val FONT_SIZE      = intPreferencesKey("font_size")
         val SHOW_ORP_COLOR = booleanPreferencesKey("show_orp_color")
         val ORP_COLOR_IDX  = intPreferencesKey("orp_color_index")
+        val IS_PRO         = booleanPreferencesKey("is_pro")
     }
 
     val preferences: Flow<UserPreferences> = context.dataStore.data
@@ -37,7 +39,8 @@ class UserPreferencesRepository(private val context: Context) {
                 defaultWpm    = prefs[Keys.DEFAULT_WPM]    ?: 150,
                 fontSize      = prefs[Keys.FONT_SIZE]      ?: 46,
                 showOrpColor  = prefs[Keys.SHOW_ORP_COLOR] ?: true,
-                orpColorIndex = prefs[Keys.ORP_COLOR_IDX]  ?: 0
+                orpColorIndex = prefs[Keys.ORP_COLOR_IDX]  ?: 0,
+                isPro         = prefs[Keys.IS_PRO]         ?: false
             )
         }
 
@@ -55,5 +58,9 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun setOrpColorIndex(index: Int) {
         context.dataStore.edit { it[Keys.ORP_COLOR_IDX] = index.coerceIn(0, 3) }
+    }
+
+    suspend fun setIsPro(unlocked: Boolean) {
+        context.dataStore.edit { it[Keys.IS_PRO] = unlocked }
     }
 }

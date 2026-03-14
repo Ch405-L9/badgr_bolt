@@ -3,6 +3,7 @@ package com.badgr.orbreader.billing
 import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.*
+import com.android.billingclient.api.PendingPurchasesParams
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,7 @@ class InAppPurchaseManager(
 
     private var billingClient: BillingClient = BillingClient.newBuilder(context)
         .setListener(this)
-        .enablePendingPurchases()
+        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .build()
 
     fun connect() {
@@ -59,7 +60,7 @@ class InAppPurchaseManager(
         billingClient.endConnection()
     }
 
-    private suspend fun queryExistingPurchases() {
+    suspend fun queryExistingPurchases() {
         val subResult = billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
                 .setProductType(BillingClient.ProductType.SUBS)
@@ -87,7 +88,7 @@ class InAppPurchaseManager(
     }
 
     private fun launchFlow(activity: Activity, productId: String, productType: String) {
-        if (billingClient.isReady.not()) {
+        if (!billingClient.isReady) {
             onPurchaseError("Billing client not ready. Please try again.")
             return
         }
@@ -144,41 +145,66 @@ class InAppPurchaseManager(
     override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                purchases?.let { handlePurchaseList(it) }
+                purchases?.let { scope.launch { handlePurchaseList(it) } }
             }
-            BillingClient.BillingResponseCode.USER_CANCELED -> { }
+            BillingClient.BillingResponseCode.USER_CANCELED -> { /* no-op */ }
             else -> {
                 onPurchaseError("Purchase failed: ${result.debugMessage}")
             }
         }
     }
 
-    private fun handlePurchaseList(purchases: List<Purchase>) {
-        scope.launch {
-            for (purchase in purchases) {
-                if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                    if (purchase.isAcknowledged.not()) {
-                        acknowledgePurchase(purchase)
-                    }
+    /**
+     * 2.3.4: Entitlement is granted only after verified acknowledgement.
+     *
+     * - Already acknowledged purchases: grant entitlement immediately (safe —
+     *   Google already confirmed these on a prior session).
+     * - Unacknowledged purchases: acknowledge first; grant entitlement only on
+     *   BillingResponseCode.OK. If acknowledgement fails, entitlement is withheld
+     *   and the error is surfaced — Google will refund after 3 days if never acked.
+     */
+    private suspend fun handlePurchaseList(purchases: List<Purchase>) {
+        for (purchase in purchases) {
+            if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) continue
+
+            if (purchase.isAcknowledged) {
+                // Already verified by Google on a prior session — safe to grant immediately.
+                withContext(Dispatchers.Main) {
+                    _isPro.value = true
+                    onPurchaseSuccess()
+                }
+            } else {
+                // Must acknowledge before granting entitlement.
+                val ackOk = acknowledgePurchase(purchase)
+                if (ackOk) {
                     withContext(Dispatchers.Main) {
                         _isPro.value = true
                         onPurchaseSuccess()
                     }
                 }
+                // If ackOk == false, onPurchaseError was already called inside
+                // acknowledgePurchase — entitlement is intentionally withheld.
             }
         }
     }
 
-    private suspend fun acknowledgePurchase(purchase: Purchase) {
+    /**
+     * Returns true if acknowledgement succeeded, false otherwise.
+     * Surfaces error via onPurchaseError on failure.
+     */
+    private suspend fun acknowledgePurchase(purchase: Purchase): Boolean {
         val result = billingClient.acknowledgePurchase(
             AcknowledgePurchaseParams.newBuilder()
                 .setPurchaseToken(purchase.purchaseToken)
                 .build()
         )
-        if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+        return if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+            true
+        } else {
             withContext(Dispatchers.Main) {
                 onPurchaseError("Acknowledgement failed: ${result.debugMessage}")
             }
+            false
         }
     }
 }
