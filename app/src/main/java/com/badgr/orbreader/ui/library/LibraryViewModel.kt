@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.local.BookDatabase
 import com.badgr.orbreader.data.model.Book
 import com.badgr.orbreader.data.model.FileType
@@ -18,6 +19,7 @@ sealed class LibraryUiState {
     object Idle : LibraryUiState()
     data class Converting(val fileName: String) : LibraryUiState()
     data class Error(val message: String) : LibraryUiState()
+    object BookLimitReached : LibraryUiState()
 }
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,10 +37,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun importPdf(uri: Uri, fileName: String)   = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.PDF,  "application/pdf") }
     fun importEpub(uri: Uri, fileName: String)  = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.EPUB, "application/epub+zip") }
     fun importDocx(uri: Uri, fileName: String)  = launchImport(fileName) {
-        repo.importRemote(
-            uri, fileName, FileType.DOCX,
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        repo.importRemote(uri, fileName, FileType.DOCX,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     }
     fun importImage(uri: Uri, fileName: String) = launchImport(fileName) { repo.importRemote(uri, fileName, FileType.IMAGE, "image/*") }
 
@@ -48,6 +48,15 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     private fun launchImport(fileName: String, block: suspend () -> ImportResult) {
         viewModelScope.launch {
+            // Enforce free book limit before starting import
+            if (!ProGate.unlimitedLib) {
+                val currentCount = db.bookDao().bookCount()
+                if (currentCount >= ProGate.FREE_BOOK_LIMIT) {
+                    _uiState.value = LibraryUiState.BookLimitReached
+                    return@launch
+                }
+            }
+
             _uiState.value = LibraryUiState.Converting(fileName)
             val result = block()
             _uiState.value = when (result) {
@@ -61,7 +70,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                         val entity = db.bookDao().getBookById(result.book.id)
                         if (entity != null) CloudSyncManager.pushBook(uid, entity)
                     } catch (e: Exception) {
-                        Log.w("LibraryViewModel", "Firestore push failed (non-fatal): ${e.localizedMessage}")
+                        Log.w("LibraryViewModel", "Firestore push failed: ${e.localizedMessage}")
                     }
                 }
             }

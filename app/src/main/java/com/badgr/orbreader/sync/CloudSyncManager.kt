@@ -21,7 +21,6 @@ object CloudSyncManager {
     val isSignedIn:  Boolean       get() = currentUser != null
 
     suspend fun signUp(email: String, password: String): FirebaseUser {
-        requirePro()
         Log.d(TAG, "Attempting signUp for $email")
         val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
         val user   = result.user ?: error("Sign-up succeeded but user was null.")
@@ -31,7 +30,6 @@ object CloudSyncManager {
     }
 
     suspend fun signIn(email: String, password: String): FirebaseUser {
-        requirePro()
         Log.d(TAG, "Attempting signIn for $email")
         val result = auth.signInWithEmailAndPassword(email.trim(), password).await()
         return result.user ?: error("Sign-in failed.")
