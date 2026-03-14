@@ -14,6 +14,11 @@ object CloudSyncManager {
 
     private const val TAG = "CloudSyncManager"
 
+    // Firestore collection names
+    private const val COLLECTION_USERS    = "users"
+    private const val COLLECTION_BOOKS    = "books"
+    private const val COLLECTION_PROGRESS = "progress"
+
     private val auth: FirebaseAuth      by lazy { FirebaseAuth.getInstance() }
     private val db:   FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
@@ -62,8 +67,8 @@ object CloudSyncManager {
 
     suspend fun fetchRemoteBooks(uid: String): List<BookEntity> {
         if (!ProGate.cloudSync) return emptyList()
-        val snapshot = db.collection("users").document(uid)
-            .collection("books").get().await()
+        val snapshot = db.collection(COLLECTION_USERS).document(uid)
+            .collection(COLLECTION_BOOKS).get().await()
         return snapshot.documents.mapNotNull { doc ->
             try {
                 BookEntity(
@@ -82,8 +87,8 @@ object CloudSyncManager {
     suspend fun pushProgress(bookId: String, currentWordIndex: Int) {
         if (!ProGate.cloudSync) return
         val uid = requireUser().uid
-        db.collection("users").document(uid)
-            .collection("progress").document(bookId)
+        db.collection(COLLECTION_USERS).document(uid)
+            .collection(COLLECTION_PROGRESS).document(bookId)
             .set(
                 mapOf(
                     "currentWordIndex" to currentWordIndex,
@@ -96,8 +101,8 @@ object CloudSyncManager {
     suspend fun fetchProgress(bookId: String): Int {
         if (!ProGate.cloudSync) return 0
         val uid = requireUser().uid
-        val doc = db.collection("users").document(uid)
-            .collection("progress").document(bookId)
+        val doc = db.collection(COLLECTION_USERS).document(uid)
+            .collection(COLLECTION_PROGRESS).document(bookId)
             .get().await()
         return (doc.getLong("currentWordIndex") ?: 0L).toInt()
     }
@@ -105,13 +110,8 @@ object CloudSyncManager {
     private fun requireUser(): FirebaseUser =
         currentUser ?: error("CloudSyncManager: no signed-in user.")
 
-    private fun requirePro() {
-        if (!ProGate.cloudSync)
-            error("CloudSyncManager: cloud operation attempted without Pro entitlement.")
-    }
-
     private fun bookDocRef(uid: String, bookId: String) =
-        db.collection("users").document(uid).collection("books").document(bookId)
+        db.collection(COLLECTION_USERS).document(uid).collection(COLLECTION_BOOKS).document(bookId)
 
     private fun BookEntity.toFirestoreMap(): Map<String, Any> = mapOf(
         "title"            to title,

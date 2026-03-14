@@ -24,6 +24,10 @@ sealed class LibraryUiState {
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
+    private companion object {
+        const val TAG = "LibraryViewModel"
+    }
+
     private val db   = BookDatabase.getInstance(application)
     private val repo = BookRepository(context = application, bookDao = db.bookDao())
 
@@ -70,7 +74,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                         val entity = db.bookDao().getBookById(result.book.id)
                         if (entity != null) CloudSyncManager.pushBook(uid, entity)
                     } catch (e: Exception) {
-                        Log.w("LibraryViewModel", "Firestore push failed: ${e.localizedMessage}")
+                        Log.w(TAG, "Firestore push failed: ${e.localizedMessage}")
                     }
                 }
             }
