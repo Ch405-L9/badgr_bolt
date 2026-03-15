@@ -24,6 +24,9 @@ class InAppPurchaseManager(
     val isPro: StateFlow<Boolean> = _isPro
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
+    /** The SKU that granted Pro — null when not Pro. */
+    private val _activeSku = MutableStateFlow<String?>(null)
+    val activeSku: StateFlow<String?> = _activeSku
 
     private var billingClient: BillingClient = BillingClient.newBuilder(context)
         .setListener(this)
@@ -171,6 +174,7 @@ class InAppPurchaseManager(
                 // Already verified by Google on a prior session — safe to grant immediately.
                 withContext(Dispatchers.Main) {
                     _isPro.value = true
+                    _activeSku.value = purchase.products.firstOrNull()
                     onPurchaseSuccess()
                 }
             } else {

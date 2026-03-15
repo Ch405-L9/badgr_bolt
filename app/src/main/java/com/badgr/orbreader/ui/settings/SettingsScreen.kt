@@ -34,7 +34,10 @@ private val THEME_OPTIONS = listOf("System", "Light", "Dark")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
+fun SettingsScreen(
+    onNavigateToAccount: () -> Unit = {},
+    vm: SettingsViewModel = viewModel()
+) {
     val prefs by vm.prefs.collectAsState()
 
     Scaffold(
@@ -360,7 +363,7 @@ fun SettingsScreen(vm: SettingsViewModel = viewModel()) {
                         }
                         if (!ProGate.isPro) {
                             OutlinedButton(
-                                onClick = {},
+                                onClick = onNavigateToAccount,
                                 colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
                             ) { Text("Unlock") }
                         }

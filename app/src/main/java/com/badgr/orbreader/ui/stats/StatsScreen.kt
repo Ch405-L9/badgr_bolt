@@ -32,7 +32,10 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatsScreen(vm: StatsViewModel = viewModel()) {
+fun StatsScreen(
+    onNavigateToAccount: () -> Unit = {},
+    vm: StatsViewModel = viewModel()
+) {
     val snapshot             by vm.snapshot.collectAsState()
     val sessions             by vm.sessions.collectAsState()
     val unlockedAchievements by vm.unlockedAchievements.collectAsState()
@@ -108,7 +111,7 @@ fun StatsScreen(vm: StatsViewModel = viewModel()) {
                             )
                             Spacer(Modifier.height(14.dp))
                             Button(
-                                onClick        = { /* navigate to account */ },
+                                onClick        = onNavigateToAccount,
                                 colors         = ButtonDefaults.buttonColors(
                                     containerColor = ReaderColors.orpFocal,
                                     contentColor   = ReaderColors.background

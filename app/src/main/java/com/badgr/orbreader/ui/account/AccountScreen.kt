@@ -1,34 +1,57 @@
 package com.badgr.orbreader.ui.account
 
 import android.app.Activity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.billing.InAppPurchaseManager
+import com.badgr.orbreader.ui.theme.ReaderColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(vm: AccountViewModel = viewModel()) {
-    val uiState by vm.uiState.collectAsState()
-    val isPro   by vm.isPro.collectAsState()
-    val activity = LocalContext.current as Activity
+    val uiState      by vm.uiState.collectAsState()
+    val isPro        by vm.isPro.collectAsState()
+    val isVerified   by vm.isEmailVerified.collectAsState()
+    val activeSku    by vm.activeSku.collectAsState()
+    val resendStatus by vm.resendStatus.collectAsState()
+    val activity      = LocalContext.current as Activity
 
     var email    by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isSignUp by remember { mutableStateOf(false) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(resendStatus) {
+        resendStatus?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearResendStatus()
+        }
+    }
+
+    val isLifetime = activeSku == InAppPurchaseManager.SKU_PRO_LIFETIME
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost   = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -55,9 +78,14 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
 
                 is AccountUiState.SignedIn -> {
                     Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        Spacer(Modifier.height(8.dp))
+
                         Text(
                             "Signed in as",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -70,29 +98,117 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                             fontWeight = FontWeight.Bold
                         )
 
-                        Spacer(Modifier.height(4.dp))
-
-                        // ── Pro status badge ──────────────────────────────────
+                        // ── Pro status card ───────────────────────────────
                         if (isPro) {
-                            AssistChip(
-                                onClick    = {},
-                                label      = { Text("BADGR Pro") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector        = Icons.Default.Star,
-                                        contentDescription = "Pro",
-                                        modifier           = Modifier.size(16.dp)
+                            val cardColor = if (isLifetime) Color(0xFFE040FB) else ReaderColors.orpFocal
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color    = cardColor.copy(alpha = 0.08f),
+                                shape    = RoundedCornerShape(14.dp),
+                                border   = BorderStroke(1.dp, cardColor.copy(alpha = 0.35f))
+                            ) {
+                                Column(
+                                    modifier            = Modifier.padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        if (isLifetime) "LIFETIME MEMBER" else "BADGR BOLT PRO",
+                                        fontFamily    = FontFamily.Monospace,
+                                        fontSize      = 9.sp,
+                                        fontWeight    = FontWeight.Bold,
+                                        color         = cardColor,
+                                        letterSpacing = 2.sp
                                     )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        if (isLifetime) "Lifetime Member" else "BADGR Bolt Pro",
+                                        color      = cardColor,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize   = 22.sp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    if (isLifetime) {
+                                        Text(
+                                            "You have permanent access to every Pro feature.",
+                                            color     = ReaderColors.textDimmed,
+                                            fontSize  = 13.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            "Thank you for supporting BADGR Bolt.",
+                                            color      = cardColor,
+                                            fontSize   = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            textAlign  = TextAlign.Center
+                                        )
+                                    } else {
+                                        Text(
+                                            "Your monthly subscription is active.",
+                                            color     = ReaderColors.textDimmed,
+                                            fontSize  = 13.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            "All Pro features are unlocked.",
+                                            color     = ReaderColors.textDimmed,
+                                            fontSize  = 13.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(Modifier.height(10.dp))
+                                        Text(
+                                            "Manage or cancel anytime in Google Play.",
+                                            color      = ReaderColors.textDimmed,
+                                            fontSize   = 11.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
                                 }
-                            )
-                        } else {
+                            }
+                        }
+
+                        // ── Email verification banner (TD-007) ────────────
+                        if (!isVerified) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color    = ReaderColors.orpFocal.copy(alpha = 0.06f),
+                                shape    = RoundedCornerShape(10.dp),
+                                border   = BorderStroke(1.dp, ReaderColors.orpFocal.copy(alpha = 0.25f))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "Verify your email to enable cloud sync",
+                                        color      = ReaderColors.textWarm,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize   = 13.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Check your inbox for a verification link. " +
+                                        "Cloud sync is paused until your email is confirmed.",
+                                        color    = ReaderColors.textDimmed,
+                                        fontSize = 12.sp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    TextButton(onClick = { vm.resendVerificationEmail() }) {
+                                        Text(
+                                            "Resend verification email",
+                                            color    = ReaderColors.orpFocal,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── Upgrade section (free users) ──────────────────
+                        if (!isPro) {
                             Text(
                                 "Upgrade to Pro to unlock all features.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
-
-                            // ── Purchase buttons ──────────────────────────────
                             Button(
                                 onClick  = { vm.launchSubscription(activity) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -100,9 +216,11 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
                             ) {
-                                Text("Subscribe — Monthly", color = MaterialTheme.colorScheme.onPrimary)
+                                Text(
+                                    "Subscribe - Monthly",
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             }
-
                             OutlinedButton(
                                 onClick  = { vm.launchLifetime(activity) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -110,12 +228,11 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                                     contentColor = MaterialTheme.colorScheme.primary
                                 )
                             ) {
-                                Text("Lifetime Access — One-time")
+                                Text("Lifetime Access - One-time")
                             }
                         }
 
-                        Spacer(Modifier.height(8.dp))
-
+                        Spacer(Modifier.height(4.dp))
                         OutlinedButton(
                             onClick = { vm.signOut() },
                             colors  = ButtonDefaults.outlinedButtonColors(
@@ -124,6 +241,7 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                         ) {
                             Text("Sign Out")
                         }
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
 
@@ -134,9 +252,14 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                 is AccountUiState.SignedOut,
                 is AccountUiState.Error -> {
                     Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        Spacer(Modifier.height(8.dp))
+
                         Text(
                             if (isSignUp) "Create Account" else "Sign In",
                             color      = MaterialTheme.colorScheme.onBackground,
@@ -211,18 +334,60 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                             )
                         }
 
-                        TextButton(
-                            onClick = {
-                                isSignUp = !isSignUp
-                                vm.clearError()
-                            }
-                        ) {
+                        TextButton(onClick = { isSignUp = !isSignUp; vm.clearError() }) {
                             Text(
                                 if (isSignUp) "Already have an account? Sign In"
-                                else          "No account? Create one",
+                                else "No account? Create one",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+
+                        if (!isSignUp) {
+                            TextButton(onClick = { vm.resetPassword(email) }) {
+                                Text(
+                                    "Forgot password?",
+                                    color    = ReaderColors.orpFocal,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = ReaderColors.guideLine)
+                        Spacer(Modifier.height(8.dp))
+
+                        // ── Free user info card ───────────────────────────
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color    = ReaderColors.orpFocal.copy(alpha = 0.05f),
+                            shape    = RoundedCornerShape(12.dp),
+                            border   = BorderStroke(1.dp, ReaderColors.guideLine)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    "No account required.",
+                                    color      = ReaderColors.textWarm,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize   = 14.sp
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "BADGR Bolt works fully offline with no account. " +
+                                    "Your books and reading progress are stored on this device.",
+                                    color    = ReaderColors.textDimmed,
+                                    fontSize = 12.sp
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "Create a free account to enable Pro features including cloud sync. " +
+                                    "Your library follows you across devices and survives reinstalls.",
+                                    color    = ReaderColors.textDimmed,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
             }

@@ -1,19 +1,57 @@
-## [2.3.6-pre] — 2026-03-14
+## [2.6.0] — 2026-03-14
+
+### Added
+- Terms of Service: docs/terms_of_service.html published to GitHub Pages
+- AccountScreen: Pro status card distinguishes Lifetime Members from Monthly subscribers
+- AccountScreen: Lifetime Members see permanent access confirmation and thank-you message
+- AccountScreen: Monthly subscribers see active subscription copy and Google Play manage link
+- AccountScreen: "No account required" info card on sign-in screen explains offline-first
+  free tier and what an account enables
+- AccountScreen: "Forgot password?" button triggers Firebase password reset email
+- AccountScreen: Snackbar feedback on password reset and verification email resend
+- InAppPurchaseManager: activeSku StateFlow exposes active product ID to UI layer
+- AccountViewModel: activeSku, isEmailVerified, resendStatus StateFlows
+- AccountViewModel: resetPassword(), resendVerificationEmail(), clearResendStatus()
+- Upgrade buttons on Settings and Stats screens now navigate to Account tab
+- MainActivity: onNavigateToAccount lambda passed to SettingsScreen and StatsScreen
+
+### Changed
+- CloudSyncManager: all sync operations gate on isVerifiedForSync (signed in + email verified)
+  Resolves TD-007. Account creation and sign-in remain open without verification.
+- CloudSyncManager: resendVerificationEmail() suspend function added
+- AccountScreen: scrollable layout on both signed-in and signed-out states
+- ProGate: PRIVATE_ROLLOUT_ALL_OPEN = false — billing gate live, entitlement enforced
+
 ### Fixed
-- CloudSyncManager: removed requirePro() from signUp() and signIn() — account
-  creation is free; Pro gates cloud sync only, not authentication
-- LibraryViewModel: free book limit (5) now enforced before import; returns
-  BookLimitReached state when exceeded
-- LibraryScreen: upgrade dialog shown when free limit reached — explains Pro
-  benefits and offers upgrade path
-- StatsScreen: free users now see an upgrade CTA card; Bolt Rank and achievement
-  grid gated behind ProGate.isPro
-### Pre-tag checklist
-- Test account creation as free user
-- Test book limit enforcement at 5 books
-- Test upgrade prompt appearance
-- Test license tester purchase flow
-- Test Pro features unlock after purchase
+- TD-007: Email verification now enforced for cloud sync operations
+- Settings Unlock button: was onClick no-op, now navigates to Account tab
+- Stats Upgrade button: was onClick no-op, now navigates to Account tab
+
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred to 2.5.6)
+- TD-006: No unit or instrumentation tests (pre-launch)
+
+### Next Milestone
+- 2.6.1: Signed AAB upload to Play Console, closed beta (5 testers)
+
+## [2.6.0] — 2026-03-14
+### Added
+- docs/terms_of_service.html: Terms of Service published to GitHub Pages
+- AccountScreen: email verification reminder banner shown to unverified signed-in users
+- AccountScreen: "Resend verification email" button
+- AccountViewModel: isEmailVerified StateFlow; resendVerificationEmail() function
+### Changed
+- CloudSyncManager: all sync operations (syncBooks, pushBook, pushProgress, fetchRemoteBooks,
+  fetchProgress) now check isVerifiedForSync (signed in + email verified) — resolves TD-007
+- CloudSyncManager: resendVerificationEmail() suspend function added
+- Account creation and sign-in remain open without email verification
+### Fixed
+- TD-007: Email verification now enforced for cloud sync. Free/offline reading unaffected.
+### Known Issues
+- TD-004: Deprecated statusBarColor in Theme.kt (deferred post-launch)
+- TD-006: No unit or instrumentation tests
+### Next Milestone
+- 2.6.1: Signed release AAB, closed beta invites (5 testers)
 
 ## [2.3.6] — 2026-03-14
 ### Changed

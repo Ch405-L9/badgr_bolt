@@ -14,7 +14,6 @@ object CloudSyncManager {
 
     private const val TAG = "CloudSyncManager"
 
-    // Firestore collection names
     private const val COLLECTION_USERS    = "users"
     private const val COLLECTION_BOOKS    = "books"
     private const val COLLECTION_PROGRESS = "progress"
@@ -24,6 +23,13 @@ object CloudSyncManager {
 
     val currentUser: FirebaseUser? get() = auth.currentUser
     val isSignedIn:  Boolean       get() = currentUser != null
+
+    /**
+     * TD-007: Returns true only if a user is signed in AND email is verified.
+     * Used to gate all cloud sync operations. Account creation itself remains open.
+     */
+    val isVerifiedForSync: Boolean
+        get() = currentUser?.isEmailVerified == true
 
     suspend fun signUp(email: String, password: String): FirebaseUser {
         Log.d(TAG, "Attempting signUp for $email")
@@ -46,8 +52,22 @@ object CloudSyncManager {
         ProGate.revokeEntitlement()
     }
 
+    /**
+     * Resends the verification email if the current user is not yet verified.
+     * Exposed to AccountViewModel for the "Resend verification" button.
+     */
+    suspend fun resendVerificationEmail() {
+        val user = currentUser ?: return
+        if (!user.isEmailVerified) {
+            user.sendEmailVerification().await()
+            Log.d(TAG, "Verification email resent to ${user.email}")
+        }
+    }
+
+    // ── Sync operations — all require ProGate.cloudSync AND email verified ──
+
     suspend fun syncBooks(bookDao: BookDao) {
-        if (!ProGate.cloudSync) return
+        if (!ProGate.cloudSync || !isVerifiedForSync) return
         val uid   = requireUser().uid
         val books = bookDao.getAllBooks_suspend()
         books.forEach { entity ->
@@ -59,14 +79,14 @@ object CloudSyncManager {
     }
 
     suspend fun pushBook(uid: String, entity: BookEntity) {
-        if (!ProGate.cloudSync) return
+        if (!ProGate.cloudSync || !isVerifiedForSync) return
         bookDocRef(uid, entity.id)
             .set(entity.toFirestoreMap(), SetOptions.merge())
             .await()
     }
 
     suspend fun fetchRemoteBooks(uid: String): List<BookEntity> {
-        if (!ProGate.cloudSync) return emptyList()
+        if (!ProGate.cloudSync || !isVerifiedForSync) return emptyList()
         val snapshot = db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_BOOKS).get().await()
         return snapshot.documents.mapNotNull { doc ->
@@ -85,7 +105,7 @@ object CloudSyncManager {
     }
 
     suspend fun pushProgress(bookId: String, currentWordIndex: Int) {
-        if (!ProGate.cloudSync) return
+        if (!ProGate.cloudSync || !isVerifiedForSync) return
         val uid = requireUser().uid
         db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_PROGRESS).document(bookId)
@@ -99,7 +119,7 @@ object CloudSyncManager {
     }
 
     suspend fun fetchProgress(bookId: String): Int {
-        if (!ProGate.cloudSync) return 0
+        if (!ProGate.cloudSync || !isVerifiedForSync) return 0
         val uid = requireUser().uid
         val doc = db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_PROGRESS).document(bookId)

@@ -108,8 +108,22 @@ class MainActivity : ComponentActivity() {
                                     ?: return@composable
                                 ReaderScreen(bookId = bookId, onBack = { navController.popBackStack() })
                             }
-                            composable(Screen.Stats.route)    { StatsScreen() }
-                            composable(Screen.Settings.route) { SettingsScreen() }
+                            composable(Screen.Stats.route) {
+                                StatsScreen(onNavigateToAccount = {
+                                    navController.navigate(Screen.Account.route) {
+                                        launchSingleTop = true
+                                        restoreState    = true
+                                    }
+                                })
+                            }
+                            composable(Screen.Settings.route) {
+                                SettingsScreen(onNavigateToAccount = {
+                                    navController.navigate(Screen.Account.route) {
+                                        launchSingleTop = true
+                                        restoreState    = true
+                                    }
+                                })
+                            }
                             composable(Screen.Account.route)  { AccountScreen() }
                         }
                     }

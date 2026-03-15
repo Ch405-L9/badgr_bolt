@@ -1,204 +1,144 @@
 # BADGR Bolt - Advanced RSVP Speed Reader
 
-**Version 2.5.2** | Android 8.0+ (API 26+)
+**Version 2.6.0** | Android 8.0+ (API 26+) | BADGRTechnologies LLC
 
-BADGR Bolt is a precision speed reading app using Optimal Recognition Point (ORP) technology and Rapid Serial Visual Presentation (RSVP) to help you read faster with better comprehension.
-
----
-
-## ✨ Features
-
-### 📖 Core Reading Experience
-- **ORP-Optimized Display**: Scientifically calculated focal point for each word minimizes eye movement
-- **Chunk Reading (1-4 words)**: Train peripheral vision by displaying multiple words simultaneously
-- **Punctuation Pauses**: Automatic slowdown at sentence boundaries (`.`, `?`, `!`) and clause separators (`,`, `;`, `:`) for natural rhythm
-- **Adjustable WPM**: 60-1200 words per minute with live controls
-- **6 Professional Fonts**: Monospace (System, JetBrains) and variable-width (Literata, Merriweather, Atkinson Hyperlegible, Open Sans)
-- **5 ORP Highlight Colors**: Customizable focal point accent
-- **Progress Tracking**: Resume exactly where you left off
-
-### 📚 Library Management
-- **Multi-Format Support**: TXT, PDF, EPUB, DOCX, IMAGE (OCR)
-- **Cloud Sync** (Pro): Sync library and reading progress across devices via Firebase
-- **Book Covers**: Automatic EPUB cover extraction
-- **Free Tier**: Up to 5 books
-- **Pro Tier**: Unlimited library
-
-### 📊 Stats & Achievements
-- **Bolt Rank System**: Dynamic rank (SPARK → BOLT → FLASH → STORM → THUNDER) based on effective WPM
-- **20 Achievements**: Unlock milestones across 5 categories (Speed, Consistency, Volume, Dedication, Exploration)
-- **Reading Sessions**: Track words read, duration, WPM, and rewind count
-- **Streak Tracking**: Monitor consecutive reading days
-- **WPM Improvement**: Compare baseline vs recent performance
-
-### 🎨 Customization
-- **Theme Modes**: System, Light, Dark
-- **Font Size**: 24-60pt adjustable slider
-- **ORP Toggle**: Show/hide focal point highlight
-- **Punctuation Pause Multipliers**: 1.0x-3.0x configurable for sentences and clauses
-
-### 🔐 Account & Sync
-- **Firebase Authentication**: Email/password with verification
-- **Cloud Backup** (Pro): Automatic Firestore sync
-- **Google Play Billing**: Monthly subscription or lifetime purchase
-- **Offline-First**: All features work without internet (except sync)
+BADGR Bolt is a precision speed reading application using Optimal Recognition Point (ORP)
+technology and Rapid Serial Visual Presentation (RSVP) to help you read faster with
+better comprehension.
 
 ---
 
-## 🚀 Getting Started
+## Feature Status
 
-### Installation
-1. Download from Google Play Store (coming soon) or build from source
-2. Grant storage permissions for book import
-3. Import your first book (TXT, PDF, EPUB, DOCX, or IMAGE)
-4. Tap to open and start reading!
-
-### First Read
-1. **Import a book**: Tap the cyan FAB → select format → choose file
-2. **Adjust WPM**: Start at 150-200 WPM, increase as comfortable
-3. **Try chunk reading**: Settings → Default Words at a Time → 2 or 3
-4. **Customize pauses**: Settings → Punctuation Pauses → adjust multipliers
-5. **Track progress**: Stats tab shows your Bolt Rank and achievements
+| Feature                      | Status       | Version  | Notes                                    |
+|------------------------------|--------------|----------|------------------------------------------|
+| RSVP / ORP Engine            | Complete     | 1.0.0    | Core reading engine                      |
+| TXT Import via SAF           | Complete     | 1.0.0    |                                          |
+| PDF and EPUB Import          | Complete     | 1.0.0    | Via backend conversion service           |
+| DOCX and IMAGE Import        | Complete     | 2.4.2    | DOCX via backend; IMAGE via OCR          |
+| Firebase Auth                | Complete     | 2.2.5    | Email/password with verification         |
+| Firestore Cloud Sync         | Complete     | 2.2.5    | Books and progress; Pro + verified only  |
+| Firestore Security Rules     | Complete     | 2.2.5    | User-scoped, production mode             |
+| Google Play Billing          | Complete     | 2.3.6    | Monthly subscription + lifetime purchase |
+| Pro Entitlement Persistence  | Complete     | 2.3.3    | DataStore-backed, survives process death |
+| Purchase Restoration         | Complete     | 2.3.5    | Restored on app resume                   |
+| Free Book Limit (5)          | Complete     | 2.3.6    | Upgrade dialog on limit reached          |
+| Performance Tracker          | Complete     | 2.4.0    | Session logging, WPM, active time        |
+| Achievements (20)            | Complete     | 2.4.0    | 5 categories, Room-persisted             |
+| Bolt Rank System             | Complete     | 2.4.0    | 5 tiers based on effective WPM           |
+| Achievement Notifications    | Complete     | 2.4.1    | Slide-in toast on unlock                 |
+| ORP Color Picker (5)         | Complete     | 2.4.3    | Persisted to DataStore                   |
+| Delete Confirmation Dialog   | Complete     | 2.4.3    | BookRow trash icon                       |
+| Theme Mode (System/Light/Dark)| Complete    | 2.4.2    | Persisted to DataStore                   |
+| Font Picker (6 fonts)        | Complete     | 2.4.4    | System + downloadable fonts              |
+| Chunk Reading (1-4 words)    | Complete     | 2.5.0    | ORP focal on first word                  |
+| Punctuation Pauses           | Complete     | 2.5.2    | Configurable multipliers                 |
+| Email Verification Gate      | Complete     | 2.6.0    | Sync requires verified email (TD-007)    |
+| Account Pro Status Card      | Complete     | 2.6.0    | Lifetime vs Monthly display              |
+| Forgot Password              | Complete     | 2.6.0    | Firebase password reset                  |
+| Terms of Service             | Complete     | 2.6.0    | docs/terms_of_service.html               |
+| Upgrade Navigation           | Complete     | 2.6.0    | Unlock buttons route to Account tab      |
+| UX / UI Redesign             | Planned      | 2.5.6    | Full BADGR brand pass                    |
+| BADGR Logo Integration       | Planned      | 2.5.6    | Requires final logo assets               |
+| Closed Beta                  | Pending      | 2.6.1    | Signed AAB + 5 testers                   |
+| Public Launch                | Planned      | 3.0.0    |                                          |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-### Tech Stack
 - **Language**: Kotlin 100%
 - **UI**: Jetpack Compose (Material 3)
 - **Architecture**: MVVM with StateFlow
-- **Database**: Room (SQLite)
+- **Local storage**: Room v2.6.1 (schema v5, explicit migrations)
 - **Preferences**: DataStore
-- **Backend**: Render.com (Python/Flask) for PDF/EPUB/DOCX/IMAGE conversion
-- **Cloud**: Firebase Auth + Firestore
-- **Billing**: Google Play Billing Library v7
+- **Network**: Retrofit + OkHttp (30s connect / 60s read)
+- **Backend**: Render.com (Python/FastAPI) for PDF/EPUB/DOCX/IMAGE conversion
+- **Cloud**: Firebase Auth + Firestore (Crashlytics, Analytics)
+- **Billing**: Google Play Billing Library v7.0.0
 
 ### Key Components
-- **OrpEngine**: Pure calculation engine for ORP index and word segmentation
-- **ProGate**: Single source of truth for feature entitlement
-- **CloudSyncManager**: Firebase Auth + Firestore wrapper
-- **AchievementsEngine**: Pure evaluation logic for unlocking achievements
-- **InAppPurchaseManager**: Google Play Billing integration with purchase restoration
 
-### Database Schema
-- **books**: id, title, fileType, wordCount, createdAt, currentWordIndex, coverPath
-- **reading_sessions**: id, bookId, bookTitle, timestamp, wordsRead, durationSeconds, wpm, rewindCount
-- **achievements**: id, unlockedAt
+| File | Purpose |
+|---|---|
+| `OrpEngine.kt` | ORP index calculation and word segmentation |
+| `ProGate.kt` | Single source of truth for feature entitlement |
+| `InAppPurchaseManager.kt` | Google Play Billing, purchase acknowledgement, restoration |
+| `CloudSyncManager.kt` | Firebase Auth + Firestore sync (requires verified email) |
+| `AchievementsEngine.kt` | Pure achievement evaluation, no side effects |
+| `ReadingSessionRepository.kt` | Session recording, streak, Bolt Rank, achievement dispatch |
+| `BookDatabase.kt` | Room database, schema v5, migrations 1 through 5 |
 
----
+### Database Schema (v5)
 
-## 🎯 Roadmap
-
-### v2.5.3 (Next)
-- [ ] Bookmarks and notes
-- [ ] Export reading stats (CSV/JSON)
-- [ ] Custom font upload
-
-### v2.6.0
-- [ ] Text-to-Speech (TTS) integration
-- [ ] Bionic Reading mode
-- [ ] Reading goals and reminders
-
-### v3.0.0
-- [ ] Tablet/foldable optimization
-- [ ] Wear OS companion app
-- [ ] Social features (reading challenges, leaderboards)
+- `books`: id, title, fileType, wordCount, createdAt, currentWordIndex, coverPath
+- `reading_sessions`: id, bookId, bookTitle, wordsRead, durationSeconds, avgWpm, rewindCount, timestamp
+- `achievements`: id, unlockedAt
 
 ---
 
-## 🐛 Known Issues
-
-- **TD-004**: Deprecated `statusBarColor` in Theme.kt (cosmetic, deferred to 2.6.x)
-- **TD-006**: No unit or instrumentation tests yet
-- **TD-007**: Email verification sent but not enforced for app access
-
----
-
-## 🔧 Building from Source
+## Building from Source
 
 ### Prerequisites
+
 - Android Studio Hedgehog (2023.1.1) or later
 - JDK 17
 - Android SDK 35
 - Gradle 8.9+
 
 ### Setup
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Ch405-L9/badgr_bolt.git
-   cd badgr_bolt
-   ```
 
-2. Create `gradle.properties` in project root:
-   ```properties
-   android.useAndroidX=true
-   android.enableJetifier=true
-   STORE_PASSWORD=your_keystore_password
-   KEY_PASSWORD=your_key_password
-   ```
+```bash
+git clone https://github.com/Ch405-L9/badgr_bolt.git
+cd badgr_bolt
+```
 
-3. Add `google-services.json` to `app/` (from Firebase Console)
+Create `gradle.properties` in project root (gitignored):
 
-4. Build:
-   ```bash
-   ./gradlew assembleDebug
-   ```
+```properties
+android.useAndroidX=true
+android.enableJetifier=true
+STORE_PASSWORD=your_keystore_password
+KEY_PASSWORD=your_key_password
+```
 
-5. Install:
-   ```bash
-   adb install app/build/outputs/apk/debug/app-debug.apk
-   ```
+Add `google-services.json` to `app/` (from Firebase Console, gitignored).
+
+```bash
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
 
 ---
 
-## 📝 Changelog
+## Known Issues
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
-
-### Latest: v2.5.2 (2026-03-14)
-- ✅ Punctuation pause system with configurable multipliers
-- ✅ AndroidX configuration fixed
-- ✅ OrpEngine import resolved
-- ✅ All features tested and working
+| ID | Description | Status |
+|---|---|---|
+| TD-004 | Deprecated `statusBarColor` in Theme.kt | Deferred to 2.5.6 |
+| TD-006 | No unit or instrumentation tests | Pre-launch |
 
 ---
 
-## 🤝 Contributing
+## Security
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-Copyright © 2026 BADGRTechnologies LLC. All rights reserved.
-
-This is proprietary software. Unauthorized copying, distribution, or modification is prohibited.
+- `google-services.json` — gitignored, never committed
+- `*.jks` keystore — offline only, never committed
+- `gradle.properties` — gitignored, credentials never in source
+- ProGuard/R8 enabled for all release builds
+- Firestore rules: user-scoped, no cross-user access
 
 ---
 
-## 🙏 Acknowledgments
+## Legal
 
-- **ORP Research**: Based on RSVP studies from MIT and Stanford
-- **Fonts**: Google Fonts (Literata, Merriweather, Atkinson Hyperlegible, Open Sans)
-- **Icons**: Material Design Icons
-- **Backend**: Render.com free tier
-- **Cloud**: Firebase free tier
-
----
-
-## 📧 Support
-
-- **Email**: support@badgr.app
-- **Issues**: [GitHub Issues](https://github.com/Ch405-L9/badgr_bolt/issues)
-- **Docs**: [Wiki](https://github.com/Ch405-L9/badgr_bolt/wiki)
+- Privacy Policy: https://ch405-l9.github.io/badgr_bolt/privacy_policy.html
+- Terms of Service: https://ch405-l9.github.io/badgr_bolt/terms_of_service.html
+- Delete Account: https://ch405-l9.github.io/badgr_bolt/delete_account.html
+- Copyright (c) 2026 BADGRTechnologies LLC. All rights reserved.
 
 ---
 
-**Made with ⚡ by BADGR**
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for full version history.

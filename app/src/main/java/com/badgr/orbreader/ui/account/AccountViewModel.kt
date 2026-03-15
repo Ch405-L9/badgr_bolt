@@ -8,6 +8,7 @@ import com.badgr.orbreader.OrbReaderApp
 import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,8 +24,7 @@ sealed class AccountUiState {
 
 class AccountViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val purchaseManager =
-        (application as OrbReaderApp).purchaseManager
+    private val purchaseManager = (application as OrbReaderApp).purchaseManager
 
     private val _uiState = MutableStateFlow<AccountUiState>(
         if (CloudSyncManager.isSignedIn)
@@ -34,9 +34,22 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     )
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
 
-    /** Reactive Pro entitlement — sourced from ProGate which is kept in sync by OrbReaderApp. */
     val isPro: StateFlow<Boolean> = ProGate.isProFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, ProGate.isPro)
+
+    /** Forwards the active SKU from billing — 'badgr_bolt_pro_lifetime' or 'badgr_bolt_pro_monthly'. */
+    val activeSku: StateFlow<String?> = purchaseManager.activeSku
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // TD-007: expose email verification state to UI
+    private val _isEmailVerified = MutableStateFlow(
+        CloudSyncManager.currentUser?.isEmailVerified == true
+    )
+    val isEmailVerified: StateFlow<Boolean> = _isEmailVerified.asStateFlow()
+
+    private val _resendStatus = MutableStateFlow<String?>(null)
+    val resendStatus: StateFlow<String?> = _resendStatus.asStateFlow()
+    fun clearResendStatus() { _resendStatus.value = null }
 
     fun signIn(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
@@ -47,6 +60,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             _uiState.value = AccountUiState.Loading
             try {
                 val user = CloudSyncManager.signIn(email.trim(), password)
+                _isEmailVerified.value = user.isEmailVerified
                 _uiState.value = AccountUiState.SignedIn(user.email ?: "")
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
@@ -69,6 +83,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             _uiState.value = AccountUiState.Loading
             try {
                 val user = CloudSyncManager.signUp(email.trim(), password)
+                _isEmailVerified.value = user.isEmailVerified  // false on new signup
                 _uiState.value = AccountUiState.SignedIn(user.email ?: "")
             } catch (e: Exception) {
                 _uiState.value = AccountUiState.Error(
@@ -80,18 +95,40 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
 
     fun signOut() {
         CloudSyncManager.signOut()
+        _isEmailVerified.value = false
         _uiState.value = AccountUiState.SignedOut
     }
 
-    fun clearError() {
-        _uiState.value = AccountUiState.SignedOut
+    fun clearError() { _uiState.value = AccountUiState.SignedOut }
+
+    fun resetPassword(email: String) {
+        if (email.isBlank()) {
+            _resendStatus.value = "Enter your email address first."
+            return
+        }
+        viewModelScope.launch {
+            try {
+                com.google.firebase.auth.FirebaseAuth.getInstance()
+                    .sendPasswordResetEmail(email.trim())
+                    .await()
+                _resendStatus.value = "Password reset email sent — check your inbox."
+            } catch (e: Exception) {
+                _resendStatus.value = "Could not send reset email. Check the address and try again."
+            }
+        }
     }
 
-    fun launchSubscription(activity: Activity) {
-        purchaseManager.launchSubscriptionFlow(activity)
+    // TD-007: resend verification email
+    fun resendVerificationEmail() {
+        viewModelScope.launch {
+            try {
+                CloudSyncManager.resendVerificationEmail()
+            } catch (e: Exception) {
+                // Non-fatal — UI already shows the banner, silently swallow
+            }
+        }
     }
 
-    fun launchLifetime(activity: Activity) {
-        purchaseManager.launchLifetimeFlow(activity)
-    }
+    fun launchSubscription(activity: Activity) = purchaseManager.launchSubscriptionFlow(activity)
+    fun launchLifetime(activity: Activity)      = purchaseManager.launchLifetimeFlow(activity)
 }
