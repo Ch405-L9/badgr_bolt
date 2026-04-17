@@ -19,7 +19,6 @@ import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.preferences.THEME_DARK
 import com.badgr.orbreader.data.preferences.THEME_LIGHT
 import com.badgr.orbreader.data.preferences.THEME_SYSTEM
-import com.badgr.orbreader.ui.theme.ColorBlindness
 import com.badgr.orbreader.ui.theme.ReaderColors
 import com.badgr.orbreader.ui.theme.ReaderFonts
 
@@ -199,16 +198,10 @@ fun SettingsScreen(
             // ── Font Size ─────────────────────────────────────────────────
             item {
                 SettingSection(title = "Font Size  -  ${prefs.fontSize}pt") {
-                    Text(
-                        "Reader auto-scales text smaller for multi-word chunks.",
-                        color    = ReaderColors.textDimmed,
-                        fontSize = 12.sp
-                    )
-                    Spacer(Modifier.height(8.dp))
                     Slider(
                         value         = prefs.fontSize.toFloat(),
                         onValueChange = { vm.setFontSize(it.toInt()) },
-                        valueRange    = 16f..52f,
+                        valueRange    = 24f..60f,
                         colors        = SliderDefaults.colors(
                             thumbColor       = ReaderColors.orpFocal,
                             activeTrackColor = ReaderColors.orpFocal
@@ -323,59 +316,6 @@ fun SettingsScreen(
                                 )
                             ) {
                                 Text(label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Color Blindness Accessibility ────────────────────────────
-            item {
-                SettingSection(title = "Color Blindness Accessibility") {
-                    Column {
-                        Text(
-                            "Remaps ORP highlight colors to vision-safe palettes (Bang Wong / IBM).",
-                            color    = ReaderColors.textDimmed,
-                            fontSize = 12.sp
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ColorBlindness.LABELS.forEachIndexed { idx, label ->
-                                val selected = prefs.colorBlindnessMode == idx
-                                val swatch = ColorBlindness.getOrpColors(idx)[0]
-                                OutlinedButton(
-                                    onClick  = { vm.setColorBlindnessMode(idx) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors   = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = if (selected) swatch.copy(alpha = 0.15f) else Color.Transparent,
-                                        contentColor   = if (selected) swatch else ReaderColors.textDimmed
-                                    ),
-                                    border   = androidx.compose.foundation.BorderStroke(
-                                        width = if (selected) 1.5.dp else 1.dp,
-                                        color = if (selected) swatch else ReaderColors.textDimmed.copy(alpha = 0.4f)
-                                    )
-                                ) {
-                                    Row(
-                                        modifier              = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment     = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            label,
-                                            fontSize   = 13.sp,
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            ColorBlindness.getOrpColors(idx).take(3).forEach { c ->
-                                                Surface(
-                                                    modifier = Modifier.size(12.dp),
-                                                    color    = c,
-                                                    shape    = CircleShape
-                                                ) {}
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
                     }

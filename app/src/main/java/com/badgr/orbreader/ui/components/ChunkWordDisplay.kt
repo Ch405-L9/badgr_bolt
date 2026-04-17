@@ -33,18 +33,11 @@ fun ChunkWordDisplay(
 ) {
     if (words.isEmpty()) return
 
-    // Auto-scale font down for multi-word chunks to prevent crowding
-    val scaledFontSize = when (words.size) {
-        1    -> fontSize
-        2    -> fontSize * 0.78f
-        3    -> fontSize * 0.68f
-        else -> fontSize * 0.58f
-    }
-
     if (words.size == 1) {
+        // Single word — use full ORP display
         OrpWordDisplay(
             word         = words[0],
-            fontSize     = scaledFontSize,
+            fontSize     = fontSize,
             showOrpColor = showOrpColor,
             orpColor     = orpColor,
             fontFamily   = fontFamily
@@ -63,6 +56,7 @@ fun ChunkWordDisplay(
                 Spacer(Modifier.width(12.dp))
             }
             if (index == 0) {
+                // First word — ORP focal treatment
                 val segments = OrpEngine.splitWordForOrp(word)
                 val highlightColor = if (showOrpColor) orpColor else ReaderColors.textWarm
                 val sideColor = ReaderColors.textWarm.copy(alpha = 0.9f)
@@ -71,7 +65,7 @@ fun ChunkWordDisplay(
                         Text(
                             text       = segments.left,
                             color      = sideColor,
-                            fontSize   = scaledFontSize,
+                            fontSize   = fontSize,
                             fontFamily = fontFamily,
                             maxLines   = 1
                         )
@@ -79,7 +73,7 @@ fun ChunkWordDisplay(
                     Text(
                         text       = segments.orpChar,
                         color      = highlightColor,
-                        fontSize   = scaledFontSize,
+                        fontSize   = fontSize,
                         fontFamily = fontFamily,
                         fontWeight = FontWeight.Bold,
                         maxLines   = 1
@@ -88,18 +82,19 @@ fun ChunkWordDisplay(
                         Text(
                             text       = segments.right,
                             color      = sideColor,
-                            fontSize   = scaledFontSize,
+                            fontSize   = fontSize,
                             fontFamily = fontFamily,
                             maxLines   = 1
                         )
                     }
                 }
             } else {
-                // Context words slightly dimmed, same scaled size
+                // Context words — slightly smaller and dimmed
+                val contextSize = fontSize * 0.85f
                 Text(
                     text       = word,
                     color      = ReaderColors.textWarm.copy(alpha = 0.55f),
-                    fontSize   = scaledFontSize * 0.85f,
+                    fontSize   = contextSize,
                     fontFamily = fontFamily,
                     maxLines   = 1
                 )

@@ -74,21 +74,6 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         .map { it.clausePauseMultiplier }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.5f)
 
-    val colorBlindnessMode: StateFlow<Int> = prefsRepo.preferences
-        .map { it.colorBlindnessMode }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-
-    // Chapter navigation — word indices where each chapter/part/section begins
-    private val _chapterStarts = MutableStateFlow<List<Int>>(listOf(0))
-
-    val totalChapters: StateFlow<Int> = _chapterStarts
-        .map { it.size }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
-
-    val currentChapterIndex: StateFlow<Int> = combine(_state, _chapterStarts) { s, chapters ->
-        chapters.indexOfLast { it <= s.currentIndex }.coerceAtLeast(0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-
     private val _newAchievements = MutableStateFlow<List<String>>(emptyList())
     val newAchievements: StateFlow<List<String>> = _newAchievements.asStateFlow()
 
@@ -112,25 +97,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(words = words, currentIndex = savedIndex, isLoading = false, wpm = savedWpm)
             }
-            detectChapters(words)
         }
-    }
-
-    private fun detectChapters(words: List<String>) {
-        val starts = mutableListOf(0)
-        val markers = setOf("chapter", "part", "section", "book", "epilogue", "prologue", "afterword")
-        var i = 0
-        while (i < words.size) {
-            val w = words[i].lowercase().trimEnd('.', ',', ':', ';')
-            if (w in markers && i > 0) {
-                // Avoid duplicate starts within 50 words
-                if (starts.last() < i - 50) starts.add(i)
-                i += 2
-            } else {
-                i++
-            }
-        }
-        _chapterStarts.value = starts
     }
 
     /**
@@ -237,23 +204,6 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val newIndex    = (_state.value.currentIndex + delta)
             .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
         _state.update { it.copy(currentIndex = newIndex) }
-        if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
-    }
-
-    fun skipWords(count: Int) {
-        if (count < 0) sessionRewindCount++
-        val newIndex = (_state.value.currentIndex + count)
-            .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
-        _state.update { it.copy(currentIndex = newIndex) }
-        if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
-    }
-
-    fun skipChapter(direction: Int) {
-        val chapters = _chapterStarts.value
-        if (chapters.size <= 1) return
-        val currentChapterIdx = chapters.indexOfLast { it <= _state.value.currentIndex }.coerceAtLeast(0)
-        val targetIdx = (currentChapterIdx + direction).coerceIn(0, chapters.lastIndex)
-        seekTo(chapters[targetIdx])
     }
 
     fun seekTo(index: Int) {

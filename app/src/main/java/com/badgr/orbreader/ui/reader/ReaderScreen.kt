@@ -2,11 +2,8 @@ package com.badgr.orbreader.ui.reader
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -20,20 +17,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.ui.components.AchievementToastHost
 import com.badgr.orbreader.ui.components.ChunkWordDisplay
-import com.badgr.orbreader.ui.theme.ColorBlindness
 import com.badgr.orbreader.ui.theme.ReaderColors
 import com.badgr.orbreader.ui.theme.ReaderFonts
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+private val ORP_COLOR_LIST = listOf(
+    Color(0xFF00CED1),
+    Color(0xFF4CAF50),
+    Color(0xFFFFC107),
+    Color(0xFFE040FB),
+    Color(0xFFE53935),
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     bookId   : String,
@@ -42,21 +45,16 @@ fun ReaderScreen(
 ) {
     LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
 
-    val state               by viewModel.state.collectAsState()
-    val bookTitle           by viewModel.bookTitle.collectAsState()
-    val showOrp             by viewModel.showOrpColor.collectAsState()
-    val orpColorIndex       by viewModel.orpColorIndex.collectAsState()
-    val fontSize            by viewModel.fontSize.collectAsState()
-    val fontIndex           by viewModel.fontIndex.collectAsState()
-    val chunkSize           by viewModel.chunkSize.collectAsState()
-    val newAchievements     by viewModel.newAchievements.collectAsState()
-    val colorBlindnessMode  by viewModel.colorBlindnessMode.collectAsState()
-    val currentChapterIndex by viewModel.currentChapterIndex.collectAsState()
-    val totalChapters       by viewModel.totalChapters.collectAsState()
+    val state           by viewModel.state.collectAsState()
+    val bookTitle       by viewModel.bookTitle.collectAsState()
+    val showOrp         by viewModel.showOrpColor.collectAsState()
+    val orpColorIndex   by viewModel.orpColorIndex.collectAsState()
+    val fontSize        by viewModel.fontSize.collectAsState()
+    val fontIndex       by viewModel.fontIndex.collectAsState()
+    val chunkSize       by viewModel.chunkSize.collectAsState()
+    val newAchievements by viewModel.newAchievements.collectAsState()
 
-    val haptic = LocalHapticFeedback.current
-    val orpColorList      = ColorBlindness.getOrpColors(colorBlindnessMode)
-    val currentOrpColor   = orpColorList.getOrElse(orpColorIndex) { orpColorList[0] }
+    val currentOrpColor   = ORP_COLOR_LIST.getOrElse(orpColorIndex) { ORP_COLOR_LIST[0] }
     val currentFontFamily = ReaderFonts.fromIndex(fontIndex)
 
     // Get current chunk of words to display
@@ -142,25 +140,11 @@ fun ReaderScreen(
                         modifier            = Modifier.padding(horizontal = 24.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            modifier              = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "${state.currentIndex + 1} / ${state.words.size}",
-                                color = ReaderColors.textDimmed,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            if (totalChapters > 1) {
-                                Text(
-                                    "Ch ${currentChapterIndex + 1} / $totalChapters",
-                                    color    = currentOrpColor.copy(alpha = 0.8f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
+                        Text(
+                            "${state.currentIndex + 1} / ${state.words.size}",
+                            color = ReaderColors.textDimmed,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
                             progress   = { state.progress },
@@ -171,28 +155,12 @@ fun ReaderScreen(
                         Spacer(Modifier.height(20.dp))
 
                         // ── WPM row ───────────────────────────────────────
-                        // Tap skip buttons: ±10 words  |  Long-press: ±1 chapter
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment     = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .combinedClickable(
-                                        onClick     = { viewModel.skipWords(-10) },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.skipChapter(-1)
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.SkipPrevious,
-                                    contentDescription = "Back 10 words (hold: prev chapter)",
-                                    tint = ReaderColors.textWarm
-                                )
+                            IconButton(onClick = { viewModel.skipSeconds(-10) }) {
+                                Icon(Icons.Default.SkipPrevious, "Back 10s", tint = ReaderColors.textWarm)
                             }
                             IconButton(onClick = { viewModel.adjustWpm(-25) }) {
                                 Icon(Icons.Default.SkipPrevious, "-25 WPM", tint = ReaderColors.textDimmed)
@@ -210,23 +178,8 @@ fun ReaderScreen(
                             IconButton(onClick = { viewModel.adjustWpm(25) }) {
                                 Icon(Icons.Default.SkipNext, "+25 WPM", tint = ReaderColors.textDimmed)
                             }
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .combinedClickable(
-                                        onClick     = { viewModel.skipWords(10) },
-                                        onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            viewModel.skipChapter(1)
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.SkipNext,
-                                    contentDescription = "Forward 10 words (hold: next chapter)",
-                                    tint = ReaderColors.textWarm
-                                )
+                            IconButton(onClick = { viewModel.skipSeconds(10) }) {
+                                Icon(Icons.Default.SkipNext, "Forward 10s", tint = ReaderColors.textWarm)
                             }
                         }
 

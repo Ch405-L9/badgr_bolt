@@ -1,0 +1,803 @@
+import os
+
+base = os.getcwd()
+
+def write(rel, content):
+    full = os.path.join(base, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, "w") as f:
+        f.write(content)
+    print(f"  ✓  {rel}")
+
+print("patch_2_4_1.py — Achievement notifications + Stats animations")
+print("=" * 70)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. AchievementToast.kt — slides in from top in ReaderScreen
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/components/AchievementToast.kt", """
+package com.badgr.orbreader.ui.components
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import com.badgr.orbreader.achievements.AchievementDefinitions
+import com.badgr.orbreader.ui.theme.ReaderColors
+import kotlinx.coroutines.delay
+
+/**
+ * Auto-dismissing achievement unlock banner.
+ * Slides down from the top of the screen, holds for 3 seconds, slides back up.
+ * Shows one achievement at a time; queues if multiple unlock simultaneously.
+ */
+@Composable
+fun AchievementToastHost(
+    newAchievementIds : List<String>,
+    onConsumed        : () -> Unit
+) {
+    var currentId by remember { mutableStateOf<String?>(null) }
+    var visible   by remember { mutableStateOf(false) }
+
+    LaunchedEffect(newAchievementIds) {
+        if (newAchievementIds.isEmpty()) return@LaunchedEffect
+        for (id in newAchievementIds) {
+            currentId = id
+            visible   = true
+            delay(3_200)
+            visible   = false
+            delay(400)   // wait for exit animation
+        }
+        onConsumed()
+    }
+
+    val def = currentId?.let { AchievementDefinitions.byId[it] }
+
+    AnimatedVisibility(
+        visible  = visible && def != null,
+        enter    = slideInVertically(
+            initialOffsetY = { -it },
+            animationSpec  = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        ) + fadeIn(),
+        exit     = slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(300)
+        ) + fadeOut(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .zIndex(10f)
+    ) {
+        if (def != null) {
+            Surface(
+                color  = ReaderColors.orpFocal.copy(alpha = 0.95f),
+                shape  = RoundedCornerShape(12.dp),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(def.emoji, fontSize = 26.sp)
+                    Column {
+                        Text(
+                            "Achievement Unlocked",
+                            fontSize      = 9.sp,
+                            fontFamily    = FontFamily.Monospace,
+                            fontWeight    = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            color         = ReaderColors.background.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            def.title,
+                            fontSize   = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = ReaderColors.background
+                        )
+                        Text(
+                            def.description,
+                            fontSize = 11.sp,
+                            color    = ReaderColors.background.copy(alpha = 0.80f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. ReaderScreen.kt — add AchievementToastHost overlay
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/reader/ReaderScreen.kt", """
+package com.badgr.orbreader.ui.reader
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.ui.components.AchievementToastHost
+import com.badgr.orbreader.ui.components.OrpWordDisplay
+import com.badgr.orbreader.ui.theme.ReaderColors
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReaderScreen(
+    bookId   : String,
+    onBack   : () -> Unit,
+    viewModel: ReaderViewModel = viewModel()
+) {
+    LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
+
+    val state           by viewModel.state.collectAsState()
+    val bookTitle       by viewModel.bookTitle.collectAsState()
+    val showOrp         by viewModel.showOrpColor.collectAsState()
+    val newAchievements by viewModel.newAchievements.collectAsState()
+
+    BackHandler {
+        viewModel.saveProgress()
+        onBack()
+    }
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text     = bookTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color    = ReaderColors.textWarm,
+                        style    = MaterialTheme.typography.titleMedium
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.saveProgress(); onBack() }) {
+                        Icon(
+                            imageVector        = Icons.Default.Close,
+                            contentDescription = "Close Reader",
+                            tint               = ReaderColors.textWarm
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = ReaderColors.orpFocal)
+            }
+            return@Scaffold
+        }
+
+        // ── Main layout with toast overlay ────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // ── Reading content ───────────────────────────────────────────
+            Column(
+                modifier            = Modifier
+                    .fillMaxSize()
+                    .background(ReaderColors.background),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier         = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(modifier = Modifier.size(width = 40.dp, height = 120.dp)) {
+                        val strokeWidth = 2.dp.toPx()
+                        val lineLength  = 15.dp.toPx()
+                        drawLine(
+                            color       = ReaderColors.orpFocal,
+                            start       = Offset(size.width / 2, 0f),
+                            end         = Offset(size.width / 2, lineLength),
+                            strokeWidth = strokeWidth
+                        )
+                        drawLine(
+                            color       = ReaderColors.orpFocal,
+                            start       = Offset(size.width / 2, size.height - lineLength),
+                            end         = Offset(size.width / 2, size.height),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                    OrpWordDisplay(
+                        word         = state.currentWord,
+                        fontSize     = 52.sp,
+                        showOrpColor = showOrp
+                    )
+                }
+
+                Surface(
+                    modifier       = Modifier.fillMaxWidth(),
+                    color          = ReaderColors.background,
+                    tonalElevation = 4.dp
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text  = "${state.currentIndex + 1} / ${state.words.size}",
+                            color = ReaderColors.textDimmed,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress   = { state.progress },
+                            modifier   = Modifier.fillMaxWidth(),
+                            color      = ReaderColors.progressBar,
+                            trackColor = ReaderColors.guideLine
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { viewModel.skipSeconds(-10) }) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Back 10s",
+                                     tint = ReaderColors.textWarm)
+                            }
+                            IconButton(onClick = { viewModel.adjustWpm(-25) }) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "-25 WPM",
+                                     tint = ReaderColors.textDimmed)
+                            }
+                            FloatingActionButton(
+                                onClick        = { viewModel.togglePlayPause() },
+                                containerColor = ReaderColors.orpFocal,
+                                contentColor   = ReaderColors.background
+                            ) {
+                                Icon(
+                                    imageVector        = if (state.isPlaying) Icons.Default.Pause
+                                                         else Icons.Default.PlayArrow,
+                                    contentDescription = if (state.isPlaying) "Pause" else "Play"
+                                )
+                            }
+                            IconButton(onClick = { viewModel.adjustWpm(25) }) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "+25 WPM",
+                                     tint = ReaderColors.textDimmed)
+                            }
+                            IconButton(onClick = { viewModel.skipSeconds(10) }) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Forward 10s",
+                                     tint = ReaderColors.textWarm)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text  = "${state.wpm} WPM",
+                            color = ReaderColors.orpFocal,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+
+            // ── Achievement toast overlay — sits above everything ─────────
+            AchievementToastHost(
+                newAchievementIds = newAchievements,
+                onConsumed        = viewModel::consumeAchievements,
+                modifier          = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    }
+}
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. StatsScreen.kt — add pulse animation + tap-to-detail bottom sheet
+# ─────────────────────────────────────────────────────────────────────────────
+write("app/src/main/java/com/badgr/orbreader/ui/stats/StatsScreen.kt", """
+package com.badgr.orbreader.ui.stats
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.badgr.orbreader.achievements.AchievementDef
+import com.badgr.orbreader.achievements.AchievementDefinitions
+import com.badgr.orbreader.achievements.BoltRank
+import com.badgr.orbreader.data.local.ReadingSessionEntity
+import com.badgr.orbreader.ui.theme.ReaderColors
+import java.text.SimpleDateFormat
+import java.util.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StatsScreen(vm: StatsViewModel = viewModel()) {
+    val snapshot             by vm.snapshot.collectAsState()
+    val sessions             by vm.sessions.collectAsState()
+    val unlockedAchievements by vm.unlockedAchievements.collectAsState()
+
+    val unlockedIds = remember(unlockedAchievements) {
+        unlockedAchievements.map { it.id }.toSet()
+    }
+
+    // Track which IDs were newly unlocked in the last session for pulse anim
+    val recentlyUnlocked = remember(unlockedAchievements) {
+        val cutoff = System.currentTimeMillis() - 10_000L  // last 10 seconds
+        unlockedAchievements.filter { it.unlockedAt >= cutoff }.map { it.id }.toSet()
+    }
+
+    val achievementRows = remember { AchievementDefinitions.ALL.chunked(4) }
+
+    // Bottom sheet state for achievement detail
+    var selectedDef   by remember { mutableStateOf<AchievementDef?>(null) }
+    var showDetail    by remember { mutableStateOf(false) }
+
+    if (showDetail && selectedDef != null) {
+        AchievementDetailSheet(
+            def        = selectedDef!!,
+            isUnlocked = selectedDef!!.id in unlockedIds,
+            onDismiss  = { showDetail = false }
+        )
+    }
+
+    Scaffold(
+        containerColor = ReaderColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text("Reading Stats", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+            // ── BOLT RANK ─────────────────────────────────────────────────
+            item {
+                Spacer(Modifier.height(4.dp))
+                BoltRankCard(rank = snapshot.boltRank)
+            }
+
+            // ── Achievement header ────────────────────────────────────────
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Achievements",
+                        color      = ReaderColors.textWarm,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 15.sp
+                    )
+                    Text(
+                        "${unlockedIds.size} / ${AchievementDefinitions.ALL.size}",
+                        color      = ReaderColors.orpFocal,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize   = 12.sp
+                    )
+                }
+            }
+
+            // ── Achievement grid ──────────────────────────────────────────
+            items(achievementRows) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { def ->
+                        AchievementChip(
+                            def             = def,
+                            isUnlocked      = def.id in unlockedIds,
+                            isPulsing       = def.id in recentlyUnlocked,
+                            modifier        = Modifier.weight(1f),
+                            onClick         = {
+                                selectedDef = def
+                                showDetail  = true
+                            }
+                        )
+                    }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+
+            // ── Performance stats ─────────────────────────────────────────
+            if (snapshot.totalSessions > 0) {
+                item {
+                    Text(
+                        "Performance",
+                        color      = ReaderColors.textWarm,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 15.sp,
+                        modifier   = Modifier.padding(top = 4.dp)
+                    )
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Best WPM",   "${snapshot.bestWpm}",    "wpm", Modifier.weight(1f))
+                        StatCard("Avg WPM",    "${snapshot.averageWpm}", "wpm", Modifier.weight(1f))
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Sessions",   "${snapshot.totalSessions}",    "",    Modifier.weight(1f))
+                        StatCard("Total Time", "${snapshot.totalReadingMins}", "min", Modifier.weight(1f))
+                    }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Streak",     "${snapshot.currentStreakDays}", "days",  Modifier.weight(1f))
+                        StatCard("Total Words", formatLargeNumber(snapshot.totalWordsRead), "words", Modifier.weight(1f))
+                    }
+                }
+                item {
+                    Text(
+                        "Recent Sessions",
+                        color      = ReaderColors.textWarm,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 15.sp,
+                        modifier   = Modifier.padding(top = 4.dp)
+                    )
+                }
+                items(sessions.take(20)) { session -> SessionRow(session) }
+            }
+
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOLT RANK CARD
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun BoltRankCard(rank: BoltRank) {
+    val rankColor = Color(rank.colorHex)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color    = rankColor.copy(alpha = 0.10f),
+        shape    = RoundedCornerShape(14.dp),
+        border   = BorderStroke(1.dp, rankColor.copy(alpha = 0.35f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    "BOLT RANK",
+                    fontFamily    = FontFamily.Monospace,
+                    fontSize      = 9.sp,
+                    fontWeight    = FontWeight.Bold,
+                    color         = rankColor,
+                    letterSpacing = 2.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(rank.label,    fontSize = 30.sp, fontWeight = FontWeight.Black, color = ReaderColors.textWarm)
+                Text(rank.subtitle, fontSize = 12.sp, color = ReaderColors.textDimmed)
+            }
+            Text(rank.emoji, fontSize = 44.sp)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACHIEVEMENT CHIP — with pulse animation for newly unlocked
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun AchievementChip(
+    def        : AchievementDef,
+    isUnlocked : Boolean,
+    isPulsing  : Boolean,
+    modifier   : Modifier,
+    onClick    : () -> Unit
+) {
+    val scale by if (isPulsing) {
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse_${def.id}")
+        infiniteTransition.animateFloat(
+            initialValue   = 1f,
+            targetValue    = 1.08f,
+            animationSpec  = infiniteRepeatable(
+                animation  = tween(600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale_${def.id}"
+        )
+    } else {
+        remember { mutableStateOf(1f) }
+    }
+
+    Surface(
+        modifier = modifier
+            .scale(scale)
+            .clickable(onClick = onClick),
+        color    = if (isUnlocked) ReaderColors.orpFocal.copy(alpha = 0.10f)
+                   else ReaderColors.background,
+        shape    = RoundedCornerShape(10.dp),
+        border   = BorderStroke(
+            width = if (isPulsing) 1.5.dp else 1.dp,
+            color = when {
+                isPulsing  -> ReaderColors.orpFocal
+                isUnlocked -> ReaderColors.orpFocal.copy(alpha = 0.45f)
+                else       -> ReaderColors.guideLine
+            }
+        )
+    ) {
+        Column(
+            modifier            = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                def.emoji,
+                fontSize = 22.sp,
+                modifier = Modifier.alpha(if (isUnlocked) 1f else 0.25f)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                def.title,
+                fontSize   = 9.sp,
+                color      = if (isUnlocked) ReaderColors.textWarm else ReaderColors.textDimmed,
+                textAlign  = TextAlign.Center,
+                fontWeight = if (isUnlocked) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines   = 2,
+                overflow   = TextOverflow.Ellipsis,
+                modifier   = Modifier.alpha(if (isUnlocked) 1f else 0.45f)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACHIEVEMENT DETAIL BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AchievementDetailSheet(
+    def        : AchievementDef,
+    isUnlocked : Boolean,
+    onDismiss  : () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState       = sheetState,
+        containerColor   = ReaderColors.background
+    ) {
+        Column(
+            modifier            = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp)
+                .padding(bottom = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                def.emoji,
+                fontSize = 56.sp,
+                modifier = Modifier.alpha(if (isUnlocked) 1f else 0.3f)
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Unlocked / Locked badge
+            Surface(
+                color = if (isUnlocked) ReaderColors.orpFocal.copy(alpha = 0.15f)
+                        else ReaderColors.guideLine.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text     = if (isUnlocked) "✓  UNLOCKED" else "LOCKED",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                    fontSize      = 9.sp,
+                    fontFamily    = FontFamily.Monospace,
+                    fontWeight    = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = if (isUnlocked) ReaderColors.orpFocal else ReaderColors.textDimmed
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                def.title,
+                fontSize   = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color      = ReaderColors.textWarm,
+                textAlign  = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                def.description,
+                fontSize  = 14.sp,
+                color     = ReaderColors.textDimmed,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Category tag
+            Surface(
+                color = ReaderColors.orpFocal.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(6.dp),
+                border = BorderStroke(1.dp, ReaderColors.orpFocal.copy(alpha = 0.2f))
+            ) {
+                Text(
+                    def.category,
+                    modifier      = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    fontSize      = 11.sp,
+                    fontFamily    = FontFamily.Monospace,
+                    color         = ReaderColors.orpFocal,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXISTING COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+fun StatCard(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color    = ReaderColors.orpFocal.copy(alpha = 0.08f),
+        shape    = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(label, color = ReaderColors.textDimmed, fontSize = 12.sp)
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = ReaderColors.textWarm, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                if (unit.isNotBlank()) {
+                    Spacer(Modifier.width(4.dp))
+                    Text(unit, color = ReaderColors.orpFocal, fontSize = 12.sp,
+                         modifier = Modifier.padding(bottom = 3.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SessionRow(session: ReadingSessionEntity) {
+    val dateStr = remember(session.timestamp) {
+        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(session.timestamp))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color    = ReaderColors.orpFocal.copy(alpha = 0.04f),
+        shape    = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier          = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(session.bookTitle, color = ReaderColors.textWarm, fontSize = 13.sp,
+                     fontWeight = FontWeight.Medium, maxLines = 1)
+                Text(dateStr, color = ReaderColors.textDimmed, fontSize = 11.sp)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("${session.avgWpm} WPM", color = ReaderColors.orpFocal,
+                     fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("${session.wordsRead} words", color = ReaderColors.textDimmed, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+private fun formatLargeNumber(n: Long): String = when {
+    n >= 1_000_000 -> "%.1fM".format(n / 1_000_000.0)
+    n >= 1_000     -> "%.1fK".format(n / 1_000.0)
+    else           -> n.toString()
+}
+""".lstrip())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fix AchievementToast.kt — modifier param on the host
+# ─────────────────────────────────────────────────────────────────────────────
+toast_path = os.path.join(base, "app/src/main/java/com/badgr/orbreader/ui/components/AchievementToast.kt")
+with open(toast_path) as f:
+    toast = f.read()
+
+toast = toast.replace(
+    "fun AchievementToastHost(\n    newAchievementIds : List<String>,\n    onConsumed        : () -> Unit\n)",
+    "fun AchievementToastHost(\n    newAchievementIds : List<String>,\n    onConsumed        : () -> Unit,\n    modifier          : Modifier = Modifier\n)"
+).replace(
+    "        modifier = Modifier\n            .fillMaxWidth()\n            .padding(horizontal = 20.dp, vertical = 8.dp)\n            .zIndex(10f)",
+    "        modifier = modifier\n            .fillMaxWidth()\n            .padding(horizontal = 20.dp, vertical = 8.dp)\n            .zIndex(10f)"
+)
+with open(toast_path, "w") as f:
+    f.write(toast)
+print("  ✓  AchievementToast.kt (modifier param added)")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHANGELOG
+# ─────────────────────────────────────────────────────────────────────────────
+cl_path = os.path.join(base, "CHANGELOG.md")
+with open(cl_path) as f:
+    existing = f.read()
+
+entry = """## [2.4.1] — 2026-03-14
+### Added
+- AchievementToast.kt: auto-dismissing slide-in banner (3s) shows emoji, title,
+  and description when achievements unlock during a reading session
+- ReaderScreen: AchievementToastHost overlay wired to newAchievements StateFlow
+- StatsScreen: achievement chips now tappable — ModalBottomSheet shows full
+  description, category, unlock condition, and locked/unlocked status
+- StatsScreen: newly unlocked achievements (last 10 seconds) pulse with
+  InfiniteTransition scale animation until user navigates away
+### Next Milestone
+- 2.4.2: Wire open_book achievement on import; consider Firestore achievement sync for Pro
+
+"""
+with open(cl_path, "w") as f:
+    f.write(entry + existing)
+print("  ✓  CHANGELOG.md")
+
+print()
+print("=" * 70)
+print("patch_2_4_1.py complete — 4 files updated.")
+print()
+print("Next:")
+print("  1.  ./gradlew assembleDebug")
+print("  2.  adb install -r app/build/outputs/apk/debug/app-debug.apk")
+print("  3.  Read for 2+ min — close reader — check toast fires")
+print("  4.  Open Stats — tap any achievement chip for detail sheet")
