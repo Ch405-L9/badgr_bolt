@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,12 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics.plugin)
+}
+
+// Load keystore credentials from keystore.properties (gitignored — never committed)
+val keystoreProps = Properties().also { props ->
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { props.load(it) }
 }
 
 android {
@@ -32,10 +40,15 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile     = file("../badgr_release.jks")
-            storePassword = providers.gradleProperty("STORE_PASSWORD").orNull ?: System.getenv("STORE_PASSWORD") ?: ""
-            keyAlias      = "badgr_bolt"
-            keyPassword   = providers.gradleProperty("KEY_PASSWORD").orNull ?: System.getenv("KEY_PASSWORD") ?: ""
+            val ksFile = keystoreProps.getProperty("storeFile")
+            storeFile     = if (ksFile != null) file(ksFile) else file("../badgr_release.jks")
+            storePassword = keystoreProps.getProperty("storePassword")
+                ?: providers.gradleProperty("STORE_PASSWORD").orNull
+                ?: System.getenv("STORE_PASSWORD") ?: ""
+            keyAlias      = keystoreProps.getProperty("keyAlias") ?: "badgr_bolt"
+            keyPassword   = keystoreProps.getProperty("keyPassword")
+                ?: providers.gradleProperty("KEY_PASSWORD").orNull
+                ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
     buildTypes {
