@@ -59,9 +59,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     val fontSize: StateFlow<Int> = prefsRepo.preferences
         .map { it.fontSize }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 46)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 36)
 
-    /** 1=single word, 2/3/4=chunk reading. Sourced from DataStore. */
     val chunkSize: StateFlow<Int> = prefsRepo.preferences
         .map { it.chunkSize }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
@@ -73,6 +72,21 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     val clausePauseMultiplier: StateFlow<Float> = prefsRepo.preferences
         .map { it.clausePauseMultiplier }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.5f)
+
+    val colorBlindnessMode: StateFlow<Int> = prefsRepo.preferences
+        .map { it.colorBlindnessMode }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    // Chapter navigation — word indices where each chapter/part/section begins
+    private val _chapterStarts = MutableStateFlow<List<Int>>(listOf(0))
+
+    val totalChapters: StateFlow<Int> = _chapterStarts
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+
+    val currentChapterIndex: StateFlow<Int> = combine(_state, _chapterStarts) { s, chapters ->
+        chapters.indexOfLast { it <= s.currentIndex }.coerceAtLeast(0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _newAchievements = MutableStateFlow<List<String>>(emptyList())
     val newAchievements: StateFlow<List<String>> = _newAchievements.asStateFlow()
@@ -97,15 +111,26 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(words = words, currentIndex = savedIndex, isLoading = false, wpm = savedWpm)
             }
+            detectChapters(words)
         }
     }
 
-    /**
-     * Returns the current chunk of words to display based on chunkSize.
-     * Always returns a list of exactly chunkSize items (padded with empty
-     * strings if near end of book). The ORP focal word is the first word
-     * in the chunk (index 0 of the returned list).
-     */
+    private fun detectChapters(words: List<String>) {
+        val starts = mutableListOf(0)
+        val markers = setOf("chapter", "part", "section", "book", "epilogue", "prologue", "afterword")
+        var i = 0
+        while (i < words.size) {
+            val w = words[i].lowercase().trimEnd('.', ',', ':', ';')
+            if (w in markers && i > 0) {
+                if (starts.last() < i - 50) starts.add(i)
+                i += 2
+            } else {
+                i++
+            }
+        }
+        _chapterStarts.value = starts
+    }
+
     fun getCurrentChunk(): List<String> {
         val s     = _state.value
         val chunk = chunkSize.value
@@ -147,7 +172,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                         _newAchievements.value = newlyUnlocked
                     }
                 } catch (e: Exception) {
-                    Log.w("ReaderViewModel", "Session record failed: \${e.localizedMessage}")
+                    Log.w("ReaderViewModel", "Session record failed: ${e.localizedMessage}")
                 }
             }
 
@@ -160,7 +185,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 CloudSyncManager.pushProgress(currentBookId, index)
             } catch (e: Exception) {
-                Log.w("ReaderViewModel", "Progress sync failed: \${e.localizedMessage}")
+                Log.w("ReaderViewModel", "Progress sync failed: ${e.localizedMessage}")
             }
         }
     }
@@ -189,7 +214,6 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
     }
 
-    /** Adjust chunk size in reader (+1 or -1), clamped 1–4. */
     fun adjustChunkSize(delta: Int) {
         val newSize = (chunkSize.value + delta).coerceIn(1, 4)
         viewModelScope.launch { prefsRepo.setChunkSize(newSize) }
@@ -204,6 +228,23 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val newIndex    = (_state.value.currentIndex + delta)
             .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
         _state.update { it.copy(currentIndex = newIndex) }
+        if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
+    }
+
+    fun skipWords(count: Int) {
+        if (count < 0) sessionRewindCount++
+        val newIndex = (_state.value.currentIndex + count)
+            .coerceIn(0, (_state.value.words.size - 1).coerceAtLeast(0))
+        _state.update { it.copy(currentIndex = newIndex) }
+        if (_state.value.isPlaying) { stopPlayback(); startPlayback() }
+    }
+
+    fun skipChapter(direction: Int) {
+        val chapters = _chapterStarts.value
+        if (chapters.size <= 1) return
+        val currentChapterIdx = chapters.indexOfLast { it <= _state.value.currentIndex }.coerceAtLeast(0)
+        val targetIdx = (currentChapterIdx + direction).coerceIn(0, chapters.lastIndex)
+        seekTo(chapters[targetIdx])
     }
 
     fun seekTo(index: Int) {
@@ -221,21 +262,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     sessionActiveMs += System.currentTimeMillis() - lastPlayStartMs
                     break
                 }
-                
-                // Calculate base delay for this chunk
+
                 val baseDelay = (60_000L * chunk) / s.wpm
-                
-                // Apply punctuation pause multiplier to the last word in the chunk
+
                 val lastWordInChunk = s.words.getOrNull(s.currentIndex + chunk - 1) ?: ""
                 val pauseMultiplier = when {
                     OrpEngine.hasSentenceEndingPunctuation(lastWordInChunk) -> sentencePauseMultiplier.value
-                    OrpEngine.hasClausePunctuation(lastWordInChunk) -> clausePauseMultiplier.value
-                    else -> 1.0f
+                    OrpEngine.hasClausePunctuation(lastWordInChunk)         -> clausePauseMultiplier.value
+                    else                                                    -> 1.0f
                 }
-                
-                val adjustedDelay = (baseDelay * pauseMultiplier).toLong()
-                
-                delay(adjustedDelay)
+
+                delay((baseDelay * pauseMultiplier).toLong())
                 _state.update { it.copy(currentIndex = (it.currentIndex + chunk).coerceAtMost(it.words.lastIndex)) }
             }
         }

@@ -28,4 +28,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setChunkSize(size: Int)                  = viewModelScope.launch { repo.setChunkSize(size) }
     fun setSentencePauseMultiplier(mult: Float)  = viewModelScope.launch { repo.setSentencePauseMultiplier(mult) }
     fun setClausePauseMultiplier(mult: Float)    = viewModelScope.launch { repo.setClausePauseMultiplier(mult) }
+    fun setColorBlindnessMode(mode: Int)         = viewModelScope.launch { repo.setColorBlindnessMode(mode) }
 }

@@ -17,11 +17,8 @@ import com.badgr.orbreader.util.OrpEngine
 /**
  * Displays a chunk of 1–4 words for chunk reading mode.
  *
- * When chunkSize == 1: delegates to OrpWordDisplay for full ORP rendering.
- * When chunkSize > 1: shows all words spaced evenly in a row.
- *   - First word gets ORP highlight treatment (bold, accent color).
- *   - Remaining words shown at normal weight, slightly dimmed.
- *   - This preserves the ORP focal anchor while giving peripheral context.
+ * Font is automatically scaled down for multi-word chunks to prevent crowding:
+ *   1 word → 100%  |  2 words → 78%  |  3 words → 68%  |  4 words → 58%
  */
 @Composable
 fun ChunkWordDisplay(
@@ -33,11 +30,18 @@ fun ChunkWordDisplay(
 ) {
     if (words.isEmpty()) return
 
+    // Auto-scale font down for multi-word chunks to prevent crowding
+    val scaledFontSize = when (words.size) {
+        1    -> fontSize
+        2    -> fontSize * 0.78f
+        3    -> fontSize * 0.68f
+        else -> fontSize * 0.58f
+    }
+
     if (words.size == 1) {
-        // Single word — use full ORP display
         OrpWordDisplay(
             word         = words[0],
-            fontSize     = fontSize,
+            fontSize     = scaledFontSize,
             showOrpColor = showOrpColor,
             orpColor     = orpColor,
             fontFamily   = fontFamily
@@ -56,7 +60,6 @@ fun ChunkWordDisplay(
                 Spacer(Modifier.width(12.dp))
             }
             if (index == 0) {
-                // First word — ORP focal treatment
                 val segments = OrpEngine.splitWordForOrp(word)
                 val highlightColor = if (showOrpColor) orpColor else ReaderColors.textWarm
                 val sideColor = ReaderColors.textWarm.copy(alpha = 0.9f)
@@ -65,7 +68,7 @@ fun ChunkWordDisplay(
                         Text(
                             text       = segments.left,
                             color      = sideColor,
-                            fontSize   = fontSize,
+                            fontSize   = scaledFontSize,
                             fontFamily = fontFamily,
                             maxLines   = 1
                         )
@@ -73,7 +76,7 @@ fun ChunkWordDisplay(
                     Text(
                         text       = segments.orpChar,
                         color      = highlightColor,
-                        fontSize   = fontSize,
+                        fontSize   = scaledFontSize,
                         fontFamily = fontFamily,
                         fontWeight = FontWeight.Bold,
                         maxLines   = 1
@@ -82,19 +85,18 @@ fun ChunkWordDisplay(
                         Text(
                             text       = segments.right,
                             color      = sideColor,
-                            fontSize   = fontSize,
+                            fontSize   = scaledFontSize,
                             fontFamily = fontFamily,
                             maxLines   = 1
                         )
                     }
                 }
             } else {
-                // Context words — slightly smaller and dimmed
-                val contextSize = fontSize * 0.85f
+                // Context words slightly dimmed, same scaled size
                 Text(
                     text       = word,
                     color      = ReaderColors.textWarm.copy(alpha = 0.55f),
-                    fontSize   = contextSize,
+                    fontSize   = scaledFontSize * 0.85f,
                     fontFamily = fontFamily,
                     maxLines   = 1
                 )
