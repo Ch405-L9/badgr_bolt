@@ -1,0 +1,19 @@
+# IDE files
+*.iml
+.idea
+.gradle
+local.properties
+build/
+capture.keystore
+
+# Local files
+*.log
+
+# Mac files
+.DS_Store
+
+# Internal Project Documents (Not for public repo)
+*.docx
+*.pdf
+*.txt
+*.OrbReaderBackend

@@ -1,0 +1,27 @@
+name: badgr_bolt Workspace
+version: 1.0.0
+schema: v1
+
+models:
+  # Qwen cloud via CONTINUE_QWEN_API_KEY from .continue/.env
+  - name: qwen-cloud
+    provider: qwen
+    model: qwen2.5
+    env:
+      CONTINUE_QWEN_API_KEY: "${CONTINUE_QWEN_API_KEY}"
+
+  # Anthropic via ANTHROPIC_API_KEY from .continue/.env
+  - name: claude-3-5-sonnet
+    provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    env:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+
+  # Local Qwen models via Ollama (no API key needed)
+  - name: qwen2.5-coder-local
+    provider: ollama
+    model: qwen2.5-coder:7b
+
+  - name: qwen2.5-coder-local-alt
+    provider: ollama
+    model: qwen-coder2.5-7b

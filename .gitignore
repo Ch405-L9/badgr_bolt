@@ -1,0 +1,83 @@
+# ============================================================
+# BADGR Bolt — .gitignore
+# BADGRTechnologies LLC
+# ============================================================
+
+# --- Android Build Outputs ---
+*.apk
+*.aab
+*.ap_
+*.dex
+build/
+app/build/
+*/build/
+
+# --- Gradle ---
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+local.properties
+
+# --- IDE — Android Studio / IntelliJ ---
+*.iml
+.idea/
+*.classpath
+*.project
+*.swp
+*~
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- Kotlin ---
+.kotlin/
+
+# --- Secrets and Credentials (NEVER COMMIT) ---
+google-services.json
+google-services-staging.json
+*.jks
+*.keystore
+keystore.properties
+gradle.properties
+.badgr_env
+
+# --- Firebase / Google ---
+crashlytics.properties
+fabric.properties
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V7
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- Internal / Non-public project documents ---
+*.docx
+*.pdf
+SHN_*.json
+*.OrbReaderBackend
+
+# --- Log files ---
+*.log
+*.hprof
+
+# --- Misc build artifacts ---
+app/src/main/Run
+app/src/main/Unknown
+app/.gitignore
+
+# Patch and fix scripts (session working files)
+patch_*.py
+fix_*.py
+diagnose_*.py
+commit_and_build.sh
+*.md.bak
+BADGR\ Bolt_*.md
+BADGR_BOLT_RELEASE_STRATEGY*.md
+.aider*
+.env

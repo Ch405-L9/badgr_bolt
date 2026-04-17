@@ -1,0 +1,688 @@
+BADGR BOLT
+Universal Build Workflow & Framework
+Version 2  |  Enhanced Edition
+BADGRTechnologies LLC  |  BADGR-D3v_0p5
+Purpose: A phase-by-phase, task-by-task workflow for completing and launching the BADGR Bolt
+Android speed-reading app using a hybrid Human + AI coding assistant model.
+
+Audience: Non-expert product owners and Android developers using local AI tools.
+AI Tools Referenced: qwen2.5-coder:7b (coding), llama3.2 / Qwen omni (planning).
+Repo: https://github.com/Ch405-L9/ReaderRSVP.git
+Local Path: /home/t0n34781/Projects/badgr_bolt
+
+
+
+Phase 0 — Setup and Orientation
+Objective: Verify that every tool, credential placeholder, and environment variable is in place before writing a single line of production code. A broken setup wastes hours.
+
+0.1  Verified Facts
+[FACT]  Repo URL: https://github.com/Ch405-L9/ReaderRSVP.git
+[FACT]  Dev machine OS: Linux, user t0n34781, hostname BADGR-Lab
+[FACT]  Local AI models: qwen2.5-coder:7b (coding), llama3.2 / Qwen omni (planning) via Ollama
+[FACT]  Target local path: /home/t0n34781/Projects/badgr_bolt
+[FACT]  Phase 1 MVP exists: RSVP/ORP core, .txt import via SAF, basic settings, zero permissions
+[FACT]  Existing docs in project space: Phase-2 Plan, Monetization Strategy, Feature Integration Guide, Privacy Policy, Marketing Plan
+
+0.2  Step-by-Step Setup
+Step 1 — Clone the Repository
+    1. Open a terminal on BADGR-Lab.
+    2. Run: git clone https://github.com/Ch405-L9/ReaderRSVP.git /home/t0n34781/Projects/badgr_bolt
+    3. Run: cd /home/t0n34781/Projects/badgr_bolt && git log --oneline -10
+    4. Confirm the latest commit appears. If the repo URL or branch does not match, flag it immediately before proceeding.
+
+Step 2 — Open in Android Studio and Sync
+    5. Open Android Studio. Choose File > Open and navigate to /home/t0n34781/Projects/badgr_bolt.
+    6. Wait for Gradle sync to complete. Watch the bottom status bar.
+    7. If sync fails: read the error in the Build output tab. Common causes include missing SDK version, missing local.properties, or outdated Gradle wrapper. Fix each error before moving on.
+    8. Run the app on an emulator or physical device via the green Run button. Confirm RSVP reading of a .txt file works end-to-end.
+    9. Document any pre-existing build errors in a file: docs/KNOWN_ISSUES.md
+
+Step 3 — Configure Environment Variables
+CRITICAL: Never commit real keys to Git. Use placeholders in all AI prompts.
+Add to your shell profile (~/.bashrc or ~/.zshrc):
+
+export ANTHROPIC_API_KEY="USER_MUST_SUPPLY"
+export FIREBASE_PROJECT_ID="USER_MUST_SUPPLY"
+export GOOGLE_SERVICES_JSON_PATH="USER_MUST_SUPPLY"
+export PLAY_BILLING_BASE_PLAN_ID="USER_MUST_SUPPLY"
+export PLAY_BILLING_PRODUCT_ID="USER_MUST_SUPPLY"
+
+Then run: source ~/.bashrc
+
+Add google-services.json to app/ only after obtaining it from your Firebase Console. Add app/google-services.json to .gitignore immediately.
+
+Step 4 — Install and Configure AI Coding Assistants
+    10. Verify Ollama is running: ollama list  (should show qwen2.5-coder:7b and llama3.2)
+    11. If not installed: ollama pull qwen2.5-coder:7b && ollama pull llama3.2
+    12. Install an IDE plugin that can call a local Ollama endpoint (for example: Continue.dev for VS Code/JetBrains, or a compatible JetBrains AI plugin configured to point at http://localhost:11434).
+    13. Test with a throwaway Kotlin snippet to confirm the plugin calls qwen2.5-coder:7b and returns results.
+
+Step 5 — Branching and PR Strategy
+Branch Model:
+  main          Production-ready code only. Protected branch.
+  develop       Integration branch. All features merge here first.
+  feature/[name] One branch per feature or milestone.
+
+Rules:
+  1. Never commit directly to main.
+  2. Every feature/* branch is reviewed by a human before merging to develop.
+  3. AI-generated code is always reviewed before it is committed.
+  4. Each merge to main requires: build passing + manual smoke test.
+
+0.3  Setup and Orientation Prompt Template
+Paste this into your AI assistant (qwen2.5-coder:7b or llama3.2) to get an instant project summary.
+
+PERSONA: You are an expert Android developer familiar with Kotlin, Jetpack Compose, and MVVM.
+
+CONTEXT: I have an Android speed-reading app called BADGR Bolt. The repo is located at
+/home/t0n34781/Projects/badgr_bolt. The app uses RSVP (Rapid Serial Visual Presentation)
+and ORP (Optimal Recognition Point) to display words rapidly for speed reading.
+Phase 1 MVP is complete: RSVP engine, .txt import via SAF, basic settings, zero permissions.
+
+TASK: Read the following key files and summarize the project:
+  - RSVPEngine.kt
+  - MainActivity.kt
+  - build.gradle.kts (app level)
+  - Any existing README.md
+
+REQUIREMENTS:
+  - List all Gradle dependencies currently used.
+  - Identify which Phase-2 features (billing, cloud sync, EPUB/PDF, tracker, TTS) are
+    already partially implemented vs entirely missing.
+  - Flag any outdated dependencies or deprecated API usages.
+  - Do not modify any files.
+
+OUTPUT: A structured summary with sections: Dependencies, Implemented Features,
+Missing Features, Warnings and Flags.
+
+
+Phase 1 — Stabilize and Document the MVP
+Objective: The MVP compiles and runs reliably. The codebase is clearly documented so that any developer or AI assistant can understand context and constraints without needing to ask the same questions twice.
+
+1.1  Tasks
+Task 1.1 — Audit and Fix Build Issues
+    14. Run a clean build: Build > Rebuild Project in Android Studio.
+    15. Fix every error and warning before moving to Phase 2. Treat warnings as issues.
+    16. Commit the fixed state: git commit -m 'chore: fix MVP build issues'
+    17. Acceptance: ./gradlew assembleDebug exits with code 0 and app installs on an emulator.
+
+Task 1.2 — Create README.md
+A high-quality README is your most important onboarding document. It must be written by a human but can be drafted by an AI.
+
+PERSONA: You are a technical writer who specializes in Android open-source projects.
+
+CONTEXT: BADGR Bolt is an Android speed-reading app under BADGRTechnologies LLC.
+License model: open-core freemium. MIT for core RSVP engine and Free features.
+Pro features (billing, cloud sync, analytics, TTS) are proprietary.
+Repo: https://github.com/Ch405-L9/ReaderRSVP.git
+
+TASK: Draft a README.md with these sections:
+  1. App name and tagline
+  2. What BADGR Bolt does (2-3 sentences, plain language)
+  3. Free vs Pro feature table
+  4. Getting Started (clone, open in Android Studio, run)
+  5. Project structure (list key files and what each does)
+  6. Contributing guidelines (feature branches, PR review)
+  7. License note (MIT for open-source core; Pro modules proprietary)
+
+REQUIREMENTS:
+  - Beginner-friendly but technically accurate.
+  - No API keys or secrets in any example.
+  - Use Markdown formatting.
+  - Do not invent features not in the context above.
+
+OUTPUT: A complete README.md in Markdown, ready to commit.
+
+Task 1.3 — Create docs/PROJECT_CONTEXT.md
+This file is the single source of truth that you hand to an AI assistant at the start of every coding session. It keeps prompts short and accurate.
+    18. Include: app purpose, monetization model, Phase-2 goals, key file list, and environment variable names (as placeholders only).
+    19. Reference the existing Phase-2 UX/UI Plan, Monetization Strategy, and Feature Integration Guide without copying them verbatim.
+    20. Keep it under 2 pages. Brevity matters for AI context windows.
+
+Task 1.4 — Create docs/BACKLOG.md
+Turn the Phase-2 feature list into a simple ticketed backlog.
+PERSONA: You are an agile project manager for an Android app.
+
+CONTEXT: BADGR Bolt Phase-2 features (from existing plan) include:
+  1. Billing and Entitlements (InAppPurchaseManager.kt)
+  2. Firebase Auth and Firestore Cloud Sync (CloudSyncManager.kt)
+  3. Advanced File Support: EPUB, PDF (EpubParser.kt, PdfParser.kt)
+  4. Reading Performance Tracker and Analytics Screen (ReadingPerformanceTracker.kt)
+  5. UX/UI Redesign: Material 3, BADGR palette, bottom nav, accessibility
+  6. Text-to-Speech integration (TextToSpeechManager.kt)
+
+TASK: Create a BACKLOG.md file. For each feature above, produce 3-5 sub-tasks
+sized for 2-4 hours each. Use this format for each task:
+
+  ## [FEATURE NAME]
+  - [ ] TASK-001: [Short task title]
+    - What: [One sentence description]
+    - Acceptance: Done when [measurable outcome]
+
+REQUIREMENTS:
+  - Tasks must be atomic enough for one AI prompt to handle.
+  - No code. Backlog items only.
+
+OUTPUT: Complete BACKLOG.md in Markdown.
+
+1.2  Human vs AI Responsibilities — Phase 1
+
+Human Developer / Owner
+AI Coding Assistant (qwen2.5-coder:7b)
+Decide final app positioning and feature list
+Draft README sections and PROJECT_CONTEXT.md
+Verify app behavior manually on device
+Generate BACKLOG.md from Phase-2 feature descriptions
+Review and approve all AI-drafted documentation
+Summarize existing files and identify gaps
+Commit and push to repo
+Propose doc structure; human edits final version
+Own all legal and licensing text
+N/A — AI never handles legal text
+
+
+Phase 2 — Implement Pro and Cloud Features
+Objective: Implement all Phase-2 milestones systematically, one vertical slice at a time. Each milestone delivers a user-visible feature that is tested and merged before the next one begins.
+
+CORE RULE: Never ask an AI to implement an entire milestone in one prompt.
+Break each milestone into 2-4 hour tasks. One task = one prompt = one review.
+AI-generated code is UNTRUSTED until reviewed by a human developer.
+
+Milestone 2.1 — Billing and Entitlements
+Description: Integrate Google Play Billing Library, expose a Pro entitlement flag throughout the app, and gate all Pro features behind that flag.
+
+Tasks
+    21. Add Google Play Billing dependency to build.gradle.kts. Verify Gradle sync succeeds.
+    22. Create or complete InAppPurchaseManager.kt: connect to BillingClient, query product details for the Pro SKU, launch the purchase flow, handle purchase acknowledgment.
+    23. Persist entitlement state securely using EncryptedSharedPreferences or DataStore.
+    24. Add a ProGate composable or utility function that returns true/false based on entitlement state.
+    25. Apply ProGate to at least two Pro features (e.g., EPUB support, cloud sync). These features must show an upgrade prompt instead of crashing or disappearing when Pro is not active.
+    26. Test with a Play Billing test account: verify purchase, verify entitlement persists after app restart, verify entitlement revokes on refund (requires Play Console internal test track).
+
+PCTF Prompt Template — Billing
+PERSONA: You are an expert Android engineer specializing in Google Play Billing Library v6+
+and Kotlin Coroutines.
+
+CONTEXT: BADGR Bolt is an Android speed-reading app with a freemium model.
+InAppPurchaseManager.kt is the designated file for all billing logic.
+The Pro product ID is: USER_MUST_SUPPLY (do not invent or guess this value).
+The app uses Kotlin, Jetpack Compose, MVVM, and DataStore for preferences.
+Repo path: /home/t0n34781/Projects/badgr_bolt
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - Use Google Play Billing Library v6 (or latest stable). Check build.gradle.kts first.
+  - All billing calls must run on a background coroutine. Never block the main thread.
+  - Handle all PurchasesUpdatedListener result codes, including USER_CANCELED and ITEM_ALREADY_OWNED.
+  - Store Pro entitlement in DataStore<Preferences> using a boolean key PREF_IS_PRO.
+  - Expose entitlement as a StateFlow<Boolean> from a ViewModel or Repository.
+  - Do not hardcode any product IDs. Accept them as constructor parameters or from BuildConfig.
+  - Do not modify any file not listed in the TASK.
+
+OUTPUT:
+  - Modified or new Kotlin code for the specified file(s) only.
+  - A list of any new Gradle dependencies required.
+  - A brief test checklist (3-5 scenarios) to verify correctness.
+
+Acceptance Criteria — Billing
+    • ./gradlew assembleDebug passes after billing dependency added.
+    • Tapping a Pro feature while not subscribed shows an upgrade/purchase dialog.
+    • After a successful test purchase, Pro features unlock without app restart.
+    • Pro status persists after app kill and relaunch.
+    • No API keys or product IDs are hardcoded in source files.
+
+Milestone 2.2 — Accounts and Cloud Sync
+Description: Integrate Firebase Auth (email/password) and Cloud Firestore via CloudSyncManager.kt. Define the Firestore schema for library, progress, settings, and performance data.
+
+Tasks
+    27. Add google-services.json to app/ (USER_MUST_SUPPLY from Firebase Console). Add to .gitignore.
+    28. Add Firebase Auth and Firestore Kotlin extensions to build.gradle.kts.
+    29. Implement sign-up and sign-in screens using Firebase Auth. Email and password only in Phase 2.
+    30. Define Firestore document schema: users/{uid}/library/{docId}, users/{uid}/progress/{docId}, users/{uid}/settings, users/{uid}/performance/{sessionId}.
+    31. Implement CloudSyncManager.kt: read/write library items, sync progress, sync settings.
+    32. Ensure the anonymous offline path remains fully functional when user is not signed in. Sign-in must be optional.
+    33. Test: sign in, add a book, kill app, relaunch, verify book appears. Test offline: disable network, verify reading still works.
+
+PCTF Prompt Template — Cloud Sync
+PERSONA: You are an expert Android engineer specializing in Firebase Auth and Cloud Firestore
+with Kotlin Coroutines and Flow.
+
+CONTEXT: BADGR Bolt is an Android speed-reading app. Cloud sync is a Pro-only feature.
+CloudSyncManager.kt is the designated file for Firestore sync logic.
+Firebase project ID: USER_MUST_SUPPLY. SHA-1 certificate: USER_MUST_SUPPLY.
+The anonymous offline experience must always work, with or without sign-in.
+Firestore schema: users/{uid}/library/{docId}, users/{uid}/progress/{docId},
+users/{uid}/settings, users/{uid}/performance/{sessionId}.
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - All Firestore operations must use Kotlin Flow or suspend functions.
+  - Handle network failures gracefully: show a non-blocking error state, never crash.
+  - Never sync when user is not authenticated. Check auth state before any Firestore call.
+  - Do not store PII beyond what is necessary (email for auth, uid as document key).
+  - Add Firestore security rules as a comment block so a human can review and apply them
+    in the Firebase Console. Do not attempt to deploy rules from code.
+  - Do not modify any file outside the scope of this task.
+
+OUTPUT:
+  - Modified Kotlin code for the specified file(s).
+  - Firestore security rules (as a comment block).
+  - Test checklist: signed-in user sync, sign-out behavior, offline behavior.
+
+Acceptance Criteria — Cloud Sync
+    • Signed-in Pro user: library and progress sync to Firestore within 5 seconds on a stable connection.
+    • Signed-out user: app functions fully offline. No Firestore calls are made.
+    • Network lost mid-session: app does not crash. Sync resumes when network returns.
+    • google-services.json is in .gitignore and is not committed to the repo.
+
+Milestone 2.3 — Advanced File Support (EPUB and PDF)
+Description: Implement FileParser.kt, EpubParser.kt, and PdfParser.kt using JSoup and PDFBox-Android. Expand the SAF import dialog to accept EPUB and PDF MIME types.
+
+Tasks
+    34. Add JSoup and PDFBox-Android (or iText, depending on license review) to build.gradle.kts.
+    35. Implement EpubParser.kt: extract chapter text from .epub files using JSoup to strip HTML tags.
+    36. Implement PdfParser.kt: extract text page-by-page from .pdf files using PDFBox-Android.
+    37. Update FileParser.kt to route files to the correct parser based on MIME type or extension.
+    38. Update the SAF intent to include MIME types: text/plain, application/epub+zip, application/pdf.
+    39. Apply ProGate: EPUB and PDF parsing are Pro-only. Free users see an upgrade prompt.
+    40. Test: import a simple .epub and .pdf, verify text appears correctly in the RSVP reader.
+
+PCTF Prompt Template — File Parsing
+PERSONA: You are an expert Android engineer familiar with file I/O, JSoup, and PDFBox-Android.
+
+CONTEXT: BADGR Bolt uses the Storage Access Framework (SAF) for all file imports.
+FileParser.kt routes files to EpubParser.kt or PdfParser.kt based on MIME type.
+EPUB and PDF parsing are Pro-only features gated by the ProGate utility.
+Free tier supports .txt only. Do not break .txt parsing.
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - EPUB parsing: use JSoup to strip all HTML tags. Return plain text String.
+  - PDF parsing: extract text from all pages. Return plain text String.
+  - All file reading must happen on a background coroutine (IO dispatcher).
+  - Handle corrupt or unreadable files gracefully: return a Result.Failure with a descriptive message.
+  - Do not request additional Android permissions beyond READ_EXTERNAL_STORAGE (or SAF URI).
+  - Do not modify RSVPEngine.kt. Parsed text is passed to it as a String.
+
+OUTPUT:
+  - Modified or new Kotlin code for the specified file(s).
+  - New Gradle dependencies required.
+  - Test checklist: valid EPUB, valid PDF, corrupt file, very large file.
+
+Acceptance Criteria — File Parsing
+    • A valid .epub file parses to readable plain text and loads in the RSVP reader.
+    • A valid .pdf file parses to readable plain text and loads in the RSVP reader.
+    • A corrupt file shows a user-friendly error message; app does not crash.
+    • .txt import still works unchanged for Free users.
+    • EPUB and PDF options show an upgrade prompt when Pro entitlement is not active.
+
+Milestone 2.4 — Reading Performance Tracker and Analytics Screen
+Description: Wire ReadingPerformanceTracker.kt into RSVPEngine.kt to capture session data. Build a Performance screen with session history, WPM charts (MPAndroidChart), streaks, and motivational messages.
+
+Tasks
+    41. Define the session data model: sessionId, startTime, endTime, wordsRead, averageWPM, fileTitle.
+    42. Store sessions in Room database (local). Pro users additionally sync via CloudSyncManager.kt.
+    43. Wire ReadingPerformanceTracker.kt into RSVPEngine.kt: start tracking on play, stop on pause/end, save session on completion.
+    44. Add MPAndroidChart to build.gradle.kts. Build a WPM-over-time line chart on the Performance screen.
+    45. Add streak logic: count consecutive days with at least one completed reading session.
+    46. Add motivational messages triggered by milestones (first session, 7-day streak, etc.).
+    47. The Performance screen is Pro-only and is gated by ProGate.
+
+PCTF Prompt Template — Performance Tracker
+PERSONA: You are an expert Android engineer familiar with Room database, Kotlin Coroutines,
+Jetpack Compose, and MPAndroidChart.
+
+CONTEXT: BADGR Bolt tracks reading sessions via ReadingPerformanceTracker.kt.
+RSVPEngine.kt emits word-presentation events. The tracker listens to these events.
+Sessions are persisted in Room. The Performance screen displays history and charts.
+This entire feature is Pro-only (gated by ProGate utility).
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - Session data must survive app restarts (Room persistence).
+  - WPM is calculated as: (words presented) / (time elapsed in minutes).
+  - Chart must handle edge cases: zero sessions, one session, 100+ sessions.
+  - Do not add any new Android permissions.
+  - Streak is based on calendar day (user's local timezone). Not on session count per day.
+  - Motivational messages must be strings in strings.xml, not hardcoded.
+
+OUTPUT:
+  - Modified or new Kotlin code for the specified file(s).
+  - Room entity and DAO definitions.
+  - Test checklist: new session recorded, streak increments, WPM chart renders.
+
+Acceptance Criteria — Performance Tracker
+    • A completed reading session appears in the Performance screen immediately after finishing.
+    • WPM chart renders correctly with zero, one, and many sessions.
+    • Streak counter increments on consecutive days and resets correctly after a missed day.
+    • Performance screen is inaccessible (shows upgrade prompt) without Pro entitlement.
+    • Session data persists after app kill and relaunch.
+
+Milestone 2.5 — UX/UI Redesign, Customization, and Branding
+Description: Apply Material 3 with the BADGR color palette and cyan-teal ORP accent. Implement bottom navigation, FAB play/pause, full-screen reading mode, accessibility updates, and theme/font customization.
+
+Tasks
+    48. Define Material 3 color scheme in Theme.kt using BADGR palette: deep navy background, warm off-white text, cyan-teal ORP accent (verified: blue-green wavelengths activate sustained attention without stress response).
+    49. Implement bottom navigation bar with destinations: Home/Library, Reader, Performance, Settings.
+    50. Replace any existing navigation with the new bottom nav structure. Update MainActivity.kt.
+    51. Implement FAB play/pause button in the reader screen. Replace any existing play/pause control.
+    52. Implement full-screen reading mode: hide system UI when reading begins, restore on exit.
+    53. Add accessibility: minimum touch target 48dp, content descriptions on all interactive elements, high-contrast mode option, respect system font size scaling.
+    54. Implement CustomizationManager.kt: extra themes (high-contrast, BADGR brand), font family selection, font size override.
+    55. Extra themes are Pro-only. Default and dark/light themes remain Free.
+
+PCTF Prompt Template — UX/UI Redesign
+PERSONA: You are an expert Android engineer specializing in Jetpack Compose, Material 3,
+and Android accessibility standards (WCAG 2.1 AA).
+
+CONTEXT: BADGR Bolt is a distraction-free speed-reading app.
+Brand palette: deep navy (#0A1628) background, warm off-white (#F5F0E8) text,
+cyan-teal (#00B4D8) for ORP focal character highlighting.
+The ORP character is the single most important UI element; it must always be visually distinct.
+Theme.kt and CustomizationManager.kt are the designated files for theming logic.
+All Pro-only themes must be gated by ProGate.
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - Use MaterialTheme.colorScheme. Do not hardcode colors in Composables.
+  - All touch targets must be at least 48dp x 48dp.
+  - All interactive elements must have contentDescription for screen reader compatibility.
+  - Full-screen reading mode must use WindowInsetsController to hide status/navigation bars.
+  - Support dynamic font size: respect user system setting and provide an in-app override.
+  - Do not alter RSVPEngine.kt timing logic during this task.
+
+OUTPUT:
+  - Modified Kotlin/Compose code for the specified file(s).
+  - Accessibility checklist (5 items verified).
+  - Screenshot descriptions of before/after states (text description only, no image).
+
+Acceptance Criteria — UX/UI Redesign
+    • App passes Android Accessibility Scanner with zero critical issues.
+    • ORP character is visually distinct using cyan-teal in all themes including high-contrast.
+    • Bottom navigation works correctly on screen sizes from 360dp to 600dp width.
+    • Full-screen reading mode hides system UI and restores correctly on back press.
+    • Pro-only themes are inaccessible without active Pro entitlement.
+
+Milestone 2.6 — Text-to-Speech Integration
+Description: Implement TextToSpeechManager.kt using Android TTS. Synchronize TTS audio output with RSVP word display. Add TTS controls in the reader UI.
+
+Tasks
+    56. Initialize Android TextToSpeech engine in TextToSpeechManager.kt. Handle initialization failure gracefully.
+    57. Implement synchronized playback: when RSVPEngine.kt advances to the next word, TTS speaks that word.
+    58. Add TTS controls to the reader UI: enable/disable toggle, speech rate slider (linked to WPM).
+    59. Implement language detection: auto-select TTS voice language to match the imported text language where possible.
+    60. Handle audio focus: request audio focus before speaking, release on pause/stop. Respect Do Not Disturb.
+    61. TTS is a Pro-only feature. Apply ProGate.
+
+PCTF Prompt Template — TTS
+PERSONA: You are an expert Android engineer specializing in Android TextToSpeech API
+and audio focus management.
+
+CONTEXT: BADGR Bolt uses RSVPEngine.kt to advance words at a user-defined WPM.
+TextToSpeechManager.kt must speak each word in sync with the RSVP display.
+TTS is a Pro-only feature, gated by ProGate.
+Audio focus must be requested properly to be a good audio citizen on Android.
+
+TASK: [TASK]
+
+REQUIREMENTS:
+  - Use Android TextToSpeech (android.speech.tts.TextToSpeech). No third-party TTS library.
+  - TTS speech rate must track WPM: rate = wpm / 200.0f (approximate, tunable).
+  - Handle TTS engine initialization failure: show a user-visible error, do not crash.
+  - Release TTS resources in onDestroy or when the composable leaves composition.
+  - Request AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK. Release on pause.
+  - Do not add the RECORD_AUDIO permission. TTS output only, no input.
+
+OUTPUT:
+  - Modified or new Kotlin code for the specified file(s).
+  - Test checklist: TTS plays in sync, TTS pauses with reader, TTS releases focus on exit.
+
+Acceptance Criteria — TTS
+    • TTS speaks each word within 50ms of RSVP display advancing to that word.
+    • TTS pauses immediately when the reader is paused.
+    • TTS initialization failure shows a user-friendly message and reading continues without TTS.
+    • TTS releases audio focus on exit from the reader screen.
+    • TTS controls show an upgrade prompt without active Pro entitlement.
+
+
+Phase 3 — Legal, Store Readiness, and QA
+Objective: The app is policy-compliant, the Play Console listing is complete, and the app has been validated on internal and closed testing tracks before public release.
+
+3.1  Privacy Policy, Terms of Service, and Data Safety
+What to Update
+    • Privacy Policy: Add sections for Firebase Auth (email stored), Firestore (library/progress data), crash reporting if added, and optional analytics. Confirm that Free/offline users generate no data.
+    • Terms of Service: Reference Pro subscription terms, cancellation, and auto-renewal per Google Play policy.
+    • Google Play Data Safety Form: Tick boxes for: data collected (email, reading data), data used for (app functionality, account management), data shared (none beyond Firebase), security practices (data encrypted in transit).
+
+Policy Update Prompt Template
+PERSONA: You are a privacy compliance specialist familiar with Google Play requirements,
+GDPR, and CCPA.
+
+CONTEXT: BADGR Bolt has been updated to include:
+  - Firebase Auth: email/password authentication for Pro users.
+  - Firestore: sync of library, reading progress, settings, and session performance data.
+  - Google Play Billing: in-app purchases for Pro subscription.
+  - Free/offline users: no data collected, no permissions beyond INTERNET for Pro.
+
+TASK: Draft updated sections for the Privacy Policy covering:
+  1. Data collected and why (by feature tier: Free vs Pro)
+  2. How data is stored and protected (Firebase, encryption in transit)
+  3. User rights (delete account, export data)
+  4. Contact information (USER_MUST_SUPPLY)
+
+REQUIREMENTS:
+  - Plain language. Avoid legal jargon where possible.
+  - Do not invent data practices not described in CONTEXT.
+  - Mark any section requiring human legal review with [LEGAL REVIEW REQUIRED].
+  - Output as Markdown.
+
+OUTPUT: Draft Privacy Policy sections in Markdown. Human legal review is mandatory
+before this is published.
+
+3.2  Permissions Audit
+Before building the release AAB, confirm AndroidManifest.xml contains only these permissions:
+    • INTERNET — required for Pro cloud sync and billing.
+    • BILLING — required for Google Play Billing.
+    • No READ_EXTERNAL_STORAGE — SAF handles file access without this permission.
+    • No WRITE_EXTERNAL_STORAGE — not needed.
+    • No RECORD_AUDIO — TTS is output only.
+Document each permission with a comment in AndroidManifest.xml explaining why it is required. Update the Google Play Data Safety section to match.
+
+3.3  Google Play Console — Listing Configuration
+Play Listing Prompt Template
+PERSONA: You are an ASO (App Store Optimization) specialist for Android apps.
+
+CONTEXT: BADGR Bolt is a speed-reading Android app.
+Core value: Read faster with focus, in a distraction-free UI, with privacy respected.
+Target users: knowledge workers, students, researchers, speed-reading practitioners.
+Key differentiators: RSVP + ORP science-backed approach, offline-first Free tier,
+optional cloud sync for Pro users, open-core MIT licensed engine.
+
+TASK: Write Google Play Store listing content:
+  1. App title (max 30 characters)
+  2. Short description (max 80 characters)
+  3. Full description (max 4000 characters): lead with value proposition,
+     describe Free vs Pro features, include a call to action.
+
+REQUIREMENTS:
+  - Include natural keyword placement for: speed reading, RSVP, focus, reading app.
+  - Do not make claims that cannot be verified (e.g., exact % reading speed increase).
+  - No emojis in the title.
+  - Tone: confident, science-informed, accessible.
+
+OUTPUT: Title, short description, and full description as plain text.
+Human review and final approval required before submission.
+
+3.4  Testing Tracks and QA
+Testing Scenarios — Required Before Release
+Scenario 1 (Free User, Offline):
+  Install app. Do not sign in. Import a .txt file. Read using RSVP. Verify no network calls made.
+  Verify EPUB/PDF options show upgrade prompt. Verify Performance screen shows upgrade prompt.
+
+Scenario 2 (Pro User, Online):
+  Complete test purchase. Verify Pro features unlock. Sign in via Firebase Auth.
+  Import an EPUB. Read. Check Performance screen shows session data.
+  Kill and relaunch app. Verify Pro status persists. Verify data synced to Firestore.
+
+Scenario 3 (Pro User, Offline):
+  Sign in. Enable airplane mode. Read a book. Verify reading works offline.
+  Re-enable network. Verify session data syncs to Firestore.
+
+Scenario 4 (Accessibility):
+  Enable TalkBack. Navigate through every screen. Verify all interactive elements
+  are reachable and have meaningful content descriptions.
+
+Scenario 5 (Billing Edge Cases):
+  Test: user cancels purchase mid-flow. Test: user has already purchased.
+  Test: billing unavailable (airplane mode). Verify app handles all gracefully.
+
+Release Steps
+    62. Build signed AAB: Build > Generate Signed Bundle/APK in Android Studio.
+    63. Upload to Play Console Internal Testing track.
+    64. Run all five test scenarios above on the internal track build.
+    65. Fix any issues found. Repeat until all scenarios pass.
+    66. Promote to Closed Testing (alpha) with a small group of real users.
+    67. Collect feedback for at least one week before promoting to Open Testing or Production.
+    68. Human must approve every promotion. AI does not have access to Play Console.
+
+Human vs AI Responsibilities — Phase 3
+
+Human Developer / Owner
+AI Coding Assistant (qwen2.5-coder:7b)
+Approve and publish final Privacy Policy and ToS
+Draft Privacy Policy and ToS update sections for human review
+Configure Play Console listing and screenshots
+Draft Play Store listing copy for human review
+Upload AAB and manage testing tracks
+Propose test scenarios and checklists
+Final approval for every promotion step
+Generate changelog or release notes draft
+Verify billing flows with real test accounts
+Analyze crash reports and propose fix candidates
+
+
+Phase 4 — Maintenance and Continuous Improvement
+Objective: Establish a repeatable, safe loop for bug fixes, minor features, and performance improvements, keeping AI assistance useful without introducing unreviewed risk.
+
+4.1  Bug and Feature Request Logging
+    69. Create docs/BUGS.md and docs/FEATURE_REQUESTS.md in the repo.
+    70. When a bug is reported (by user review, crash report, or internal test), log it with: description, reproduction steps, device/OS version, severity (Critical/Major/Minor).
+    71. When a feature request is logged, note: source (user review, internal), priority, alignment with open-core strategy.
+    72. Review both files weekly. Promote items to docs/BACKLOG.md when ready to implement.
+
+4.2  Turning Bugs into AI Tasks
+Rule: Never ask an AI to fix a bug it cannot reproduce from the information given.
+Always include: the error message or stack trace, the file and function name,
+the expected behavior, and the actual behavior.
+Always ask for a test that would catch this bug if it reappeared.
+
+PERSONA: You are an expert Android engineer debugging a Kotlin Android app.
+
+CONTEXT: BADGR Bolt — speed-reading app. File: [FILENAME]. Function: [FUNCTION_NAME].
+
+BUG REPORT:
+  Description: [DESCRIBE THE BUG]
+  Stack trace or error message: [PASTE STACK TRACE]
+  Expected behavior: [WHAT SHOULD HAPPEN]
+  Actual behavior: [WHAT ACTUALLY HAPPENS]
+  Device: [DEVICE MODEL], Android [VERSION]
+
+TASK: Identify the root cause and propose a fix.
+
+REQUIREMENTS:
+  - Do not modify files outside [FILENAME] unless strictly necessary.
+  - Propose a unit test that would catch this regression.
+  - If the fix requires a dependency change, list it explicitly.
+  - If the root cause is ambiguous, list the top 2 hypotheses and how to test each.
+
+OUTPUT: Root cause analysis, proposed fix (code), and regression test.
+
+4.3  Safe AI-Assisted Refactoring
+    73. Refactors must only be proposed after tests exist for the code being changed. No tests = no refactor via AI.
+    74. Scope each refactor to one file or one logical unit. Never refactor the entire codebase in one step.
+    75. After AI proposes a refactor, the human developer runs the test suite and reviews the diff before committing.
+    76. Common safe refactors: extract duplicated logic to a utility function, improve coroutine scope management, reduce memory allocations in the RSVP render loop.
+
+4.4  Performance Improvement Loop
+    • Large file memory: if importing a 500-page PDF causes an OOM error, chunk parsing into pages and process them lazily. Use this as a prompt task for the AI.
+    • RSVP timing drift: profile with Android Profiler. If timing drifts beyond 5ms per word, investigate coroutine scheduling and consider using a Handler with a fixed delay on a dedicated thread.
+    • Startup time: use Android Baseline Profiles (AGP 7.3+) to pre-compile critical paths. Ask the AI to generate the baseline profile instrumentation test.
+
+4.5  A/B Test Ideas (Privacy-Safe)
+All A/B tests must respect the privacy-first design. No external analytics SDK required. Use local feature flags.
+    • A/B test: Default WPM on first launch (200 vs 250). Measure: does user change it within first session? Log locally only.
+    • A/B test: Upgrade prompt copy variant A vs B. Measure: conversion rate (local DataStore counter). No PII.
+    • A/B test: Streak notification timing (morning vs evening). Measure: session start rate next day. Local only.
+
+4.6  Quality Gates (Always Apply)
+Before any AI-generated change is committed to develop:
+
+  [ ] ./gradlew test passes (unit tests).
+  [ ] ./gradlew connectedAndroidTest passes (instrumented tests, if applicable).
+  [ ] Human developer has read every changed line.
+  [ ] No hardcoded keys, secrets, or product IDs introduced.
+  [ ] No new permissions added without explicit justification.
+  [ ] CHANGELOG.md updated with a one-line description of the change.
+
+
+Appendix — Quick Reference
+
+USER_MUST_SUPPLY Items
+Item
+Where to Obtain
+ANTHROPIC_API_KEY
+console.anthropic.com — API Keys section
+FIREBASE_PROJECT_ID
+Firebase Console — Project Settings
+google-services.json
+Firebase Console — Project Settings > Your Apps > Android app
+SHA-1 certificate fingerprint
+Android Studio > Gradle > signingReport, or keytool
+GOOGLE_PLAY_BILLING_PRODUCT_ID
+Play Console > Monetize > Products > Subscriptions or One-time
+GOOGLE_PLAY_BASE_PLAN_ID
+Play Console > Monetize > Products > Subscriptions > Base Plans
+Play Console developer account
+play.google.com/console — one-time $25 registration fee
+Firebase Auth email (admin)
+Firebase Console — Authentication > Sign-in method > Email/Password
+
+Transparency Labels Used in This Document
+    • [FACT] — Derived directly from verified project context and existing documentation.
+    • [PATTERN] — Industry best practice or commonly validated Android/Firebase workflow.
+    • [HYPOTHESIS] — A design choice where multiple valid approaches exist. Human must decide.
+    • [USER_MUST_SUPPLY] — Configuration or data that cannot be provided without your specific accounts.
+    • [LEGAL REVIEW REQUIRED] — Any text flagged this way must be reviewed by a qualified person before publication.
+
+Key File Reference
+File
+Purpose
+RSVPEngine.kt
+Core RSVP/ORP word presentation engine. Phase 1 complete.
+MainActivity.kt
+Orchestrates UI, navigation, and feature managers.
+ReadingPerformanceTracker.kt
+Tracks reading sessions, WPM, streaks. Phase 2 implementation.
+InAppPurchaseManager.kt
+Google Play Billing, Pro entitlement. Phase 2 implementation.
+CloudSyncManager.kt
+Firebase Auth and Firestore sync. Phase 2 implementation.
+FileParser.kt / EpubParser.kt / PdfParser.kt
+Text extraction from supported file types. Phase 2 implementation.
+CustomizationManager.kt
+Theme, font, and preference management. Phase 2 implementation.
+TextToSpeechManager.kt
+Android TTS integration synchronized with RSVP. Phase 2 implementation.
+Theme.kt
+Material 3 color scheme, BADGR palette, ORP accent.
+strings.xml
+All user-visible strings. Motivational messages, error text, UI labels.
+
+
+BADGR Bolt — Build Workflow v2
+BADGRTechnologies LLC  |  BADGR-D3v_0p5  |  Confidential

@@ -1,0 +1,163 @@
+play_console_resources:
+  - id: play_console_help
+    label: "Play Console Help"
+    type: official
+    tags: [overview, help, publishing, testing]
+    url: "https://support.google.com/googleplay/android-developer/"
+
+  - id: play_console_overview
+    label: "Google Play Console overview"
+    type: official
+    tags: [overview, console]
+    url: "https://developer.android.com/distribute/console"
+
+  - id: publishing_overview
+    label: "Publishing overview"
+    type: official
+    tags: [publishing, tracks, releases]
+    url: "https://play.google.com/console/about/publishingoverview/"
+
+  - id: testing_setup
+    label: "Set up open, closed, or internal tests"
+    type: official
+    tags: [testing, internal, closed, open]
+    url: "https://support.google.com/googleplay/android-developer/answer/9845334"
+
+  - id: internal_testing
+    label: "Internal testing overview"
+    type: official
+    tags: [testing, internal]
+    url: "https://play.google.com/console/about/internal-testing/"
+
+  - id: testing_requirements_personal
+    label: "App testing requirements for new personal accounts"
+    type: official
+    tags: [testing, policy, solo_dev]
+    url: "https://support.google.com/googleplay/android-developer/answer/14151465"
+
+  - id: subscriptions_console_setup
+    label: "Subscription setup (Play Console)"
+    type: official
+    tags: [billing, subscriptions, console]
+    url: "https://play.google.com/console/about/subscriptionsetup/"
+
+  - id: subscriptions_console_manage
+    label: "Create and manage subscriptions"
+    type: official
+    tags: [billing, subscriptions, console]
+    url: "https://support.google.com/googleplay/android-developer/answer/140504"
+
+  - id: play_billing_overview
+    label: "Google Play Billing overview"
+    type: official
+    tags: [billing, overview, android]
+    url: "https://developer.android.com/google/play/billing"
+
+  - id: play_billing_integrate
+    label: "Integrate Billing Library"
+    type: official
+    tags: [billing, implementation, android]
+    url: "https://developer.android.com/google/play/billing/integrate"
+
+  - id: play_billing_subscriptions
+    label: "About subscriptions (Billing)"
+    type: official
+    tags: [billing, subscriptions, concepts]
+    url: "https://developer.android.com/google/play/billing/subscriptions"
+
+  - id: play_billing_test
+    label: "Test Billing integration"
+    type: official
+    tags: [billing, testing]
+    url: "https://developer.android.com/google/play/billing/test"
+
+  - id: app_signing_help
+    label: "Use Play App Signing (Help)"
+    type: official
+    tags: [signing, security, console]
+    url: "https://support.google.com/googleplay/android-developer/answer/9842756"
+
+  - id: app_signing_android_studio
+    label: "Sign your app (Android Studio)"
+    type: official
+    tags: [signing, android_studio]
+    url: "https://developer.android.com/studio/publish/app-signing"
+
+  - id: integrity_and_signing
+    label: "Integrity and signing (Play Console)"
+    type: official
+    tags: [signing, integrity, security]
+    url: "https://play.google.com/console/about/app-integrity/"
+
+  - id: play_developer_apis
+    label: "Google Play Developer APIs"
+    type: official
+    tags: [api, automation, reporting]
+    url: "https://developer.android.com/google/play/developer-api"
+
+  - id: internal_testing_blog
+    label: "How to use internal testing feature (AppMySite)"
+    type: community
+    tags: [testing, internal, guide]
+    url: "https://blog.appmysite.com/how-to-use-the-google-play-console-internal-testing-feature/"
+
+  - id: internal_testing_best_practices
+    label: "Internal testing to ship production-ready apps"
+    type: community
+    tags: [testing, process, best_practices]
+    url: "https://proandroiddev.com/how-i-use-internal-testing-to-ship-production-ready-android-apps-1faab5eb53fb"
+
+  - id: new_testing_requirements_explainer
+    label: "New Play Store account testing requirements"
+    type: community
+    tags: [testing, policy, solo_dev]
+    url: "https://www.webtonative.com/blog/new-playstore-account-requirements"
+
+  - id: subscriptions_setup_apphud
+    label: "Google Play subscriptions setup (Apphud)"
+    type: community
+    tags: [billing, subscriptions, backend]
+    url: "https://docs.apphud.com/docs/google-play-subscriptions-setup"
+
+  - id: play_billing_samples
+    label: "Official Play Billing samples"
+    type: github
+    tags: [billing, samples, code]
+    url: "https://github.com/googlesamples/play-billing-samples"
+
+  - id: play_billing_samples_community
+    label: "Play Billing samples (nakawai)"
+    type: github
+    tags: [billing, samples, subscriptions]
+    url: "https://github.com/nakawai/play-billing-samples"
+
+  - id: billing_example_vijaysoren
+    label: "Integrate Play Billing Library example"
+    type: github
+    tags: [billing, example, android]
+    url: "https://github.com/vijaysoren/Integrate-Google-Play-billing-library-in-your-android-app"
+
+  - id: billing_example_v6
+    label: "In-App Billing Library v6 example"
+    type: github
+    tags: [billing, example, subscriptions]
+    url: "https://github.com/wicaodian/Google-In-App-Billing-Library-V6-Example"
+
+  - id: github_action_play_console
+    label: "GitHub Action: google-play-console"
+    type: github
+    tags: [automation, ci_cd, api]
+    url: "https://github.com/marketplace/actions/google-play-console"
+
+  - id: github_action_upload_internal
+    label: "GitHub Action: upload Android release to Play internal track"
+    type: github
+    tags: [automation, ci_cd, internal_testing]
+    url: "https://github.com/marketplace/actions/upload-android-release-to-play-store-internal-track-publishing-is-default"
+
+  - id: github_play_developer_api_scripts
+    label: "Google Play Developer API helper scripts"
+    type: github
+    tags: [api, automation, bash]
+    url: "https://github.com/hrafnthor/google-play-developer-api"
+

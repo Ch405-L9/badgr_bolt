@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — BADGR Bolt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:         #0A192F;
+      --bg-card:    #112240;
+      --bg-rule:    #1d3458;
+      --cyan:       #00CED1;
+      --cyan-dim:   rgba(0, 206, 209, 0.12);
+      --cyan-glow:  rgba(0, 206, 209, 0.25);
+      --text:       #E8E2D0;
+      --text-dim:   #8892B0;
+      --mono:       'Space Mono', monospace;
+      --sans:       'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.75;
+      min-height: 100vh;
+      padding: 0 1rem;
+    }
+
+    /* ── Noise texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 4rem 0 6rem;
+    }
+
+    /* ── Header ── */
+    header {
+      margin-bottom: 3.5rem;
+      border-bottom: 1px solid var(--bg-rule);
+      padding-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      border-radius: 3px;
+      padding: 3px 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 0.6rem;
+    }
+
+    h1 span { color: var(--cyan); }
+
+    .meta {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 2.75rem;
+    }
+
+    h2 {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cyan);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--bg-rule);
+    }
+
+    p { margin-bottom: 0.85rem; color: var(--text); font-weight: 300; }
+    p:last-child { margin-bottom: 0; }
+
+    strong { font-weight: 600; color: var(--text); }
+
+    a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+    a:hover { border-color: var(--cyan); }
+
+    /* ── Callout cards ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-left: 3px solid var(--cyan);
+      border-radius: 6px;
+      padding: 1.25rem 1.4rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+
+    .card p { margin-bottom: 0; font-size: 0.92rem; }
+
+    /* ── Data table ── */
+    .data-grid {
+      display: grid;
+      gap: 0.6rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .data-row {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-radius: 6px;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      overflow: hidden;
+    }
+
+    .data-key {
+      background: var(--cyan-dim);
+      padding: 0.7rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+    }
+
+    .data-val {
+      padding: 0.7rem 1rem;
+      font-size: 0.88rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── No-collect list ── */
+    .no-collect {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-rule);
+      border-radius: 4px;
+      padding: 4px 10px;
+      color: var(--text-dim);
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--bg-rule);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 520px) {
+      .data-row { grid-template-columns: 1fr; }
+      .data-key { border-bottom: 1px solid var(--bg-rule); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">BADGRTechnologies LLC</div>
+    <h1>Privacy Policy<br/><span>BADGR Bolt</span></h1>
+    <p class="meta">Effective date: 2026-03-14 &nbsp;·&nbsp; Last updated: 2026-03-14</p>
+  </header>
+
+  <!-- 1. Overview -->
+  <section>
+    <h2>Overview</h2>
+    <p>BADGRTechnologies LLC ("we", "our", "us") built <strong>BADGR Bolt</strong> as a commercial Android application. This policy explains what data we collect, why we collect it, and how it is handled.</p>
+    <p>If you use BADGR Bolt as a free user without creating an account, <strong>no personal data leaves your device</strong>. All reading content and progress are stored locally. This policy primarily governs data handling for users who create an account or purchase a Pro subscription.</p>
+  </section>
+
+  <!-- 2. Data we collect -->
+  <section>
+    <h2>Data We Collect</h2>
+
+    <div class="data-grid">
+      <div class="data-row">
+        <div class="data-key">Email address</div>
+        <div class="data-val">Required to create and authenticate your BADGR Bolt account via Firebase Authentication.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Reading progress</div>
+        <div class="data-val">Your current position in each book is synced to the cloud for Pro subscribers to enable cross-device continuity.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Book metadata</div>
+        <div class="data-val">Book title, file type, and word count are synced for Pro subscribers. Book <em>content</em> is never uploaded or stored on our servers.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Crash logs</div>
+        <div class="data-val">Anonymised crash reports are collected via Firebase Crashlytics to help us identify and fix bugs. These do not contain personally identifiable information.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Usage analytics</div>
+        <div class="data-val">Anonymous, aggregated usage patterns are collected via Firebase Analytics to understand how the app is used. No individual user is identified.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">File conversion</div>
+        <div class="data-val">When you import a PDF or EPUB, the file is sent to our conversion server to extract text. The file and extracted text are processed in memory and are <strong>not stored</strong> on our servers after the response is returned.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Data we do NOT collect -->
+  <section>
+    <h2>Data We Do Not Collect</h2>
+    <p>BADGR Bolt does not collect, store, or transmit any of the following:</p>
+    <div class="no-collect">
+      <span class="tag">Book content</span>
+      <span class="tag">Payment information</span>
+      <span class="tag">Location data</span>
+      <span class="tag">Device identifiers</span>
+      <span class="tag">Contacts or calendar</span>
+      <span class="tag">Camera or microphone</span>
+      <span class="tag">Browsing history</span>
+      <span class="tag">Biometric data</span>
+    </div>
+    <p style="margin-top:0.85rem;">Payment processing for Pro subscriptions and one-time purchases is handled entirely by Google Play. We never receive or store your payment details.</p>
+  </section>
+
+  <!-- 4. How we use data -->
+  <section>
+    <h2>How We Use Your Data</h2>
+    <div class="card">
+      <div class="card-title">Authentication</div>
+      <p>Your email address is used solely to create and manage your account. We do not use it for marketing without your explicit consent.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Cloud Sync (Pro)</div>
+      <p>Reading progress and book metadata are synced to Firebase Firestore to restore your library when you sign in on another device or reinstall the app.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Stability and Improvement</div>
+      <p>Crash logs and anonymous analytics help us identify bugs and prioritise features. No personally identifiable data is included in these reports.</p>
+    </div>
+  </section>
+
+  <!-- 5. Third-party services -->
+  <section>
+    <h2>Third-Party Services</h2>
+    <p>BADGR Bolt uses the following third-party services. Each operates under its own privacy policy.</p>
+    <div class="data-grid">
+      <div class="data-row">
+        <div class="data-key">Firebase Auth</div>
+        <div class="data-val">Account authentication. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy Policy</a></div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Firestore</div>
+        <div class="data-val">Cloud storage for Pro user library and progress data.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Crashlytics</div>
+        <div class="data-val">Anonymous crash reporting.</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Firebase Analytics</div>
+        <div class="data-val">Anonymous usage analytics. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">Google Play Billing</div>
+        <div class="data-val">Subscription and one-time purchase processing. <a href="https://play.google.com/about/play-terms/" target="_blank" rel="noopener">Google Play Terms</a></div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">BADGR Text Service</div>
+        <div class="data-val">Our own PDF/EPUB conversion backend. Files are processed in memory and not retained.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Data retention -->
+  <section>
+    <h2>Data Retention and Deletion</h2>
+    <p>Your account data (email, synced books, reading progress) is retained for as long as your account exists. You may request deletion of your account and all associated data at any time by contacting us at the address below. Upon deletion, all Firestore data associated with your user ID is permanently removed.</p>
+    <p>Crash logs and analytics data are anonymised and cannot be individually attributed or deleted.</p>
+  </section>
+
+  <!-- 7. Children -->
+  <section>
+    <h2>Children's Privacy</h2>
+    <p>BADGR Bolt is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal data, please contact us and we will delete it promptly.</p>
+  </section>
+
+  <!-- 8. Security -->
+  <section>
+    <h2>Security</h2>
+    <p>All data transmitted between BADGR Bolt and our services is encrypted in transit using TLS. Data stored in Firebase Firestore is encrypted at rest by Google. We follow security best practices in our development process, including scoped database access rules that prevent any user from accessing another user's data.</p>
+  </section>
+
+  <!-- 9. Permissions -->
+  <section>
+    <h2>Android Permissions</h2>
+    <div class="data-grid">
+      <div class="data-row">
+        <div class="data-key">INTERNET</div>
+        <div class="data-val">Required for Firebase services, cloud sync, and file conversion. Not used when the app is operating in fully offline mode.</div>
+      </div>
+    </div>
+    <p>BADGR Bolt requests only the single permission listed above. No permissions for location, camera, microphone, contacts, or storage are requested.</p>
+  </section>
+
+  <!-- 10. Changes -->
+  <section>
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy as the app adds new features or services. When we do, we will update the "Last updated" date at the top of this page. We encourage you to review this policy periodically. Continued use of BADGR Bolt after changes are posted constitutes acceptance of the updated policy.</p>
+  </section>
+
+  <!-- 11. Contact -->
+  <section>
+    <h2>Contact</h2>
+    <p>Questions, data deletion requests, or privacy concerns can be directed to:</p>
+    <div class="card">
+      <div class="card-title">BADGRTechnologies LLC</div>
+      <p>
+        GitHub: <a href="https://github.com/Ch405-L9/badgr_bolt" target="_blank" rel="noopener">github.com/Ch405-L9/badgr_bolt</a><br/>
+        <!-- Replace with your contact email before publishing -->
+        Email: <strong>privacy@badgrtechnologies.com</strong> <!-- USER_MUST_SUPPLY -->
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <span>© 2026 BADGRTechnologies LLC. All rights reserved.</span>
+    <span>BADGR Bolt · Android · v2.3.x</span>
+  </footer>
+
+</div>
+</body>
+</html>
