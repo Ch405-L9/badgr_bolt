@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">BADGR Bolt</string>
+    <string name="app_description">BADGR Bolt is the ultimate speed reading companion. Master your reading with RSVP (Rapid Serial Visual Presentation) and ORP (Optimal Recognition Point) technology. Import PDF, EPUB, DOCX, and TXT files to read up to 1000+ WPM. Track your progress, unlock achievements, and sync your library across devices with Bolt Pro.</string>
+    <string name="rate_app">Rate BADGR Bolt</string>
+    <string name="feedback">Send Feedback</string>
+    <string name="help_faq">Help &amp; FAQ</string>
+    <string name="onboarding_welcome">Welcome to BADGR Bolt</string>
+    <string name="onboarding_desc">Master speed reading with our advanced RSVP engine. Focus on the highlighted Optimal Recognition Point (ORP) to read faster than ever.</string>
+    <string name="get_started">Get Started</string>
 </resources>

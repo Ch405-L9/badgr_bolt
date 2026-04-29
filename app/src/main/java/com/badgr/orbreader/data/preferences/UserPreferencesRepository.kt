@@ -26,7 +26,9 @@ data class UserPreferences(
     val chunkSize               : Int     = 1,
     val sentencePauseMultiplier : Float   = 2.0f,
     val clausePauseMultiplier   : Float   = 1.5f,
-    val colorBlindnessMode      : Int     = 0
+    val colorBlindnessMode      : Int     = 0,
+    val hasSeenOnboarding       : Boolean = false,
+    val hasSeenHelp             : Boolean = false
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -43,6 +45,8 @@ class UserPreferencesRepository(private val context: Context) {
         val SENTENCE_PAUSE_MULT      = floatPreferencesKey("sentence_pause_multiplier")
         val CLAUSE_PAUSE_MULT        = floatPreferencesKey("clause_pause_multiplier")
         val COLOR_BLINDNESS_MODE     = intPreferencesKey("color_blindness_mode")
+        val HAS_SEEN_ONBOARDING      = booleanPreferencesKey("has_seen_onboarding")
+        val HAS_SEEN_HELP            = booleanPreferencesKey("has_seen_help")
     }
 
     val preferences: Flow<UserPreferences> = context.dataStore.data
@@ -62,7 +66,9 @@ class UserPreferencesRepository(private val context: Context) {
                 chunkSize               = prefs[Keys.CHUNK_SIZE]           ?: 1,
                 sentencePauseMultiplier = prefs[Keys.SENTENCE_PAUSE_MULT]  ?: 2.0f,
                 clausePauseMultiplier   = prefs[Keys.CLAUSE_PAUSE_MULT]    ?: 1.5f,
-                colorBlindnessMode      = prefs[Keys.COLOR_BLINDNESS_MODE] ?: 0
+                colorBlindnessMode      = prefs[Keys.COLOR_BLINDNESS_MODE] ?: 0,
+                hasSeenOnboarding       = prefs[Keys.HAS_SEEN_ONBOARDING]  ?: false,
+                hasSeenHelp             = prefs[Keys.HAS_SEEN_HELP]        ?: false
             )
         }
 
@@ -77,4 +83,6 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setSentencePauseMultiplier(mult: Float)    { context.dataStore.edit { it[Keys.SENTENCE_PAUSE_MULT]  = mult.coerceIn(1.0f, 3.0f) } }
     suspend fun setClausePauseMultiplier(mult: Float)      { context.dataStore.edit { it[Keys.CLAUSE_PAUSE_MULT]    = mult.coerceIn(1.0f, 3.0f) } }
     suspend fun setColorBlindnessMode(mode: Int)           { context.dataStore.edit { it[Keys.COLOR_BLINDNESS_MODE] = mode.coerceIn(0, 4) } }
+    suspend fun setHasSeenOnboarding(seen: Boolean)        { context.dataStore.edit { it[Keys.HAS_SEEN_ONBOARDING]  = seen } }
+    suspend fun setHasSeenHelp(seen: Boolean)              { context.dataStore.edit { it[Keys.HAS_SEEN_HELP]        = seen } }
 }

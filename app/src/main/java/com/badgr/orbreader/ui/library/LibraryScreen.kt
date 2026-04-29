@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.ui.theme.ReaderColors
+import com.badgr.orbreader.billing.ProGate
 
 private data class FormatOption(
     val label   : String,
@@ -156,7 +157,26 @@ fun LibraryScreen(
         containerColor = ReaderColors.background,
         topBar = {
             TopAppBar(
-                title  = { Text("Library", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold) },
+                title  = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Library", color = ReaderColors.textWarm, fontWeight = FontWeight.Bold)
+                        if (!ProGate.isPro) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = ReaderColors.orpFocal.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    "LITE",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = ReaderColors.orpFocal,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = ReaderColors.background)
             )
         },
