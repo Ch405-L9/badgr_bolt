@@ -1,3 +1,18 @@
+## [3.2.6] — 2026-04-29
+
+### Changed
+- Release: bumped Android version to `versionCode 26` / `versionName 3.2.6`
+- Build: generated signed Play Console app bundle with Firebase configuration enabled
+- Repo hygiene: ignored local `release-artifacts/` output directory
+
+### Fixed
+- Account: hardened Firebase Auth access so dev builds without Firebase config do not crash on Account tab open
+- Account: safely resolve wrapped Compose context before launching Google Play Billing flows
+
+### Release Artifacts
+- Signed AAB: `release-artifacts/badgr-bolt-3.2.6-26-release.aab`
+- Mapping file: `release-artifacts/badgr-bolt-3.2.6-26-mapping.txt`
+
 ## [3.2.5] — 2026-04-29
 
 ### Changed

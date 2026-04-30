@@ -1,6 +1,8 @@
 package com.badgr.orbreader.ui.account
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,7 +34,8 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
     val isVerified   by vm.isEmailVerified.collectAsState()
     val activeSku    by vm.activeSku.collectAsState()
     val resendStatus by vm.resendStatus.collectAsState()
-    val activity      = LocalContext.current as Activity
+    val isAuthConfigured = vm.isAuthConfigured
+    val activity      = LocalContext.current.findActivity()
 
     var email    by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -210,7 +213,8 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Button(
-                                onClick  = { vm.launchSubscription(activity) },
+                                onClick  = { activity?.let(vm::launchSubscription) },
+                                enabled  = activity != null,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors   = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
@@ -222,7 +226,8 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                                 )
                             }
                             OutlinedButton(
-                                onClick  = { vm.launchLifetime(activity) },
+                                onClick  = { activity?.let(vm::launchLifetime) },
+                                enabled  = activity != null,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors   = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.primary
@@ -283,10 +288,26 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                             }
                         }
 
+                        if (!isAuthConfigured) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color    = MaterialTheme.colorScheme.errorContainer,
+                                shape    = MaterialTheme.shapes.small
+                            ) {
+                                Text(
+                                    text     = "Accounts are unavailable in this build because Firebase is not configured.",
+                                    color    = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(12.dp),
+                                    style    = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
                         OutlinedTextField(
                             value           = email,
                             onValueChange   = { email = it },
                             label           = { Text("Email") },
+                            enabled         = isAuthConfigured,
                             singleLine      = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             modifier        = Modifier.fillMaxWidth(),
@@ -303,6 +324,7 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                             value                = password,
                             onValueChange        = { password = it },
                             label                = { Text("Password") },
+                            enabled              = isAuthConfigured,
                             singleLine           = true,
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -323,6 +345,7 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                                 if (isSignUp) vm.signUp(email, password)
                                 else          vm.signIn(email, password)
                             },
+                            enabled  = isAuthConfigured,
                             modifier = Modifier.fillMaxWidth(),
                             colors   = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
@@ -334,7 +357,10 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                             )
                         }
 
-                        TextButton(onClick = { isSignUp = !isSignUp; vm.clearError() }) {
+                        TextButton(
+                            onClick = { isSignUp = !isSignUp; vm.clearError() },
+                            enabled = isAuthConfigured
+                        ) {
                             Text(
                                 if (isSignUp) "Already have an account? Sign In"
                                 else "No account? Create one",
@@ -343,7 +369,10 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
                         }
 
                         if (!isSignUp) {
-                            TextButton(onClick = { vm.resetPassword(email) }) {
+                            TextButton(
+                                onClick = { vm.resetPassword(email) },
+                                enabled = isAuthConfigured
+                            ) {
                                 Text(
                                     "Forgot password?",
                                     color    = ReaderColors.orpFocal,
@@ -393,4 +422,10 @@ fun AccountScreen(vm: AccountViewModel = viewModel()) {
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

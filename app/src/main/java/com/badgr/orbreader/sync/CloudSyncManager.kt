@@ -4,6 +4,7 @@ import android.util.Log
 import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.local.BookDao
 import com.badgr.orbreader.data.local.BookEntity
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
@@ -18,10 +19,16 @@ object CloudSyncManager {
     private const val COLLECTION_BOOKS    = "books"
     private const val COLLECTION_PROGRESS = "progress"
 
-    private val auth: FirebaseAuth      by lazy { FirebaseAuth.getInstance() }
-    private val db:   FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
+    private val auth: FirebaseAuth?
+        get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
 
-    val currentUser: FirebaseUser? get() = auth.currentUser
+    private val db: FirebaseFirestore?
+        get() = runCatching { FirebaseFirestore.getInstance() }.getOrNull()
+
+    val isConfigured: Boolean
+        get() = runCatching { FirebaseApp.getInstance() }.isSuccess
+
+    val currentUser: FirebaseUser? get() = auth?.currentUser
     val isSignedIn:  Boolean       get() = currentUser != null
 
     /**
@@ -32,6 +39,7 @@ object CloudSyncManager {
         get() = currentUser?.isEmailVerified == true
 
     suspend fun signUp(email: String, password: String): FirebaseUser {
+        val auth = requireAuth()
         Log.d(TAG, "Attempting signUp for $email")
         val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
         val user   = result.user ?: error("Sign-up succeeded but user was null.")
@@ -41,6 +49,7 @@ object CloudSyncManager {
     }
 
     suspend fun signIn(email: String, password: String): FirebaseUser {
+        val auth = requireAuth()
         Log.d(TAG, "Attempting signIn for $email")
         val result = auth.signInWithEmailAndPassword(email.trim(), password).await()
         return result.user ?: error("Sign-in failed.")
@@ -48,8 +57,12 @@ object CloudSyncManager {
 
     fun signOut() {
         Log.d(TAG, "Signing out")
-        auth.signOut()
+        auth?.signOut()
         ProGate.revokeEntitlement()
+    }
+
+    suspend fun sendPasswordResetEmail(email: String) {
+        requireAuth().sendPasswordResetEmail(email.trim()).await()
     }
 
     /**
@@ -69,9 +82,10 @@ object CloudSyncManager {
     suspend fun syncBooks(bookDao: BookDao) {
         if (!ProGate.cloudSync || !isVerifiedForSync) return
         val uid   = requireUser().uid
+        val db = db ?: return
         val books = bookDao.getAllBooks_suspend()
         books.forEach { entity ->
-            bookDocRef(uid, entity.id)
+            bookDocRef(db, uid, entity.id)
                 .set(entity.toFirestoreMap(), SetOptions.merge())
                 .await()
         }
@@ -80,13 +94,15 @@ object CloudSyncManager {
 
     suspend fun pushBook(uid: String, entity: BookEntity) {
         if (!ProGate.cloudSync || !isVerifiedForSync) return
-        bookDocRef(uid, entity.id)
+        val db = db ?: return
+        bookDocRef(db, uid, entity.id)
             .set(entity.toFirestoreMap(), SetOptions.merge())
             .await()
     }
 
     suspend fun fetchRemoteBooks(uid: String): List<BookEntity> {
         if (!ProGate.cloudSync || !isVerifiedForSync) return emptyList()
+        val db = db ?: return emptyList()
         val snapshot = db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_BOOKS).get().await()
         return snapshot.documents.mapNotNull { doc ->
@@ -107,6 +123,7 @@ object CloudSyncManager {
     suspend fun pushProgress(bookId: String, currentWordIndex: Int) {
         if (!ProGate.cloudSync || !isVerifiedForSync) return
         val uid = requireUser().uid
+        val db = db ?: return
         db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_PROGRESS).document(bookId)
             .set(
@@ -121,6 +138,7 @@ object CloudSyncManager {
     suspend fun fetchProgress(bookId: String): Int {
         if (!ProGate.cloudSync || !isVerifiedForSync) return 0
         val uid = requireUser().uid
+        val db = db ?: return 0
         val doc = db.collection(COLLECTION_USERS).document(uid)
             .collection(COLLECTION_PROGRESS).document(bookId)
             .get().await()
@@ -130,7 +148,10 @@ object CloudSyncManager {
     private fun requireUser(): FirebaseUser =
         currentUser ?: error("CloudSyncManager: no signed-in user.")
 
-    private fun bookDocRef(uid: String, bookId: String) =
+    private fun requireAuth(): FirebaseAuth =
+        auth ?: error("Firebase is not configured for this build. Add app/google-services.json and rebuild to enable accounts.")
+
+    private fun bookDocRef(db: FirebaseFirestore, uid: String, bookId: String) =
         db.collection(COLLECTION_USERS).document(uid).collection(COLLECTION_BOOKS).document(bookId)
 
     private fun BookEntity.toFirestoreMap(): Map<String, Any> = mapOf(

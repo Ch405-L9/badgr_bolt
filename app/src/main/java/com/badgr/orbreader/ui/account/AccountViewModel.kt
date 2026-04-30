@@ -8,7 +8,6 @@ import com.badgr.orbreader.OrbReaderApp
 import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.sync.CloudSyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +24,8 @@ sealed class AccountUiState {
 class AccountViewModel(application: Application) : AndroidViewModel(application) {
 
     private val purchaseManager = (application as OrbReaderApp).purchaseManager
+
+    val isAuthConfigured: Boolean = CloudSyncManager.isConfigured
 
     private val _uiState = MutableStateFlow<AccountUiState>(
         if (CloudSyncManager.isSignedIn)
@@ -108,12 +109,11 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
         viewModelScope.launch {
             try {
-                com.google.firebase.auth.FirebaseAuth.getInstance()
-                    .sendPasswordResetEmail(email.trim())
-                    .await()
+                CloudSyncManager.sendPasswordResetEmail(email)
                 _resendStatus.value = "Password reset email sent — check your inbox."
             } catch (e: Exception) {
-                _resendStatus.value = "Could not send reset email. Check the address and try again."
+                _resendStatus.value = e.localizedMessage
+                    ?: "Could not send reset email. Check the address and try again."
             }
         }
     }
