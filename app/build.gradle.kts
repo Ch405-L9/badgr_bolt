@@ -6,8 +6,17 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics.plugin)
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.crashlytics.plugin) apply false
+}
+
+// Firebase config is intentionally NOT committed.
+// Only apply Google Services / Crashlytics plugins when `app/google-services.json` exists,
+// so fresh clones can still sync/build without private config files.
+val hasGoogleServicesJson = file("google-services.json").exists()
+if (hasGoogleServicesJson) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 // Load keystore credentials from keystore.properties (gitignored — never committed)
@@ -15,6 +24,21 @@ val keystoreProps = Properties().also { props ->
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { props.load(it) }
 }
+
+val releaseKeystorePath = keystoreProps.getProperty("storeFile") ?: "../badgr_release.jks"
+val releaseKeystoreFile = rootProject.file(releaseKeystorePath).takeIf { it.exists() }
+val releaseStorePassword =
+    keystoreProps.getProperty("storePassword")
+        ?: providers.gradleProperty("STORE_PASSWORD").orNull
+        ?: System.getenv("STORE_PASSWORD")
+        ?: ""
+val releaseKeyPassword =
+    keystoreProps.getProperty("keyPassword")
+        ?: providers.gradleProperty("KEY_PASSWORD").orNull
+        ?: System.getenv("KEY_PASSWORD")
+        ?: ""
+val hasReleaseSigning =
+    releaseKeystoreFile != null && releaseStorePassword.isNotBlank() && releaseKeyPassword.isNotBlank()
 
 android {
     namespace  = "com.badgr.orbreader"
@@ -24,8 +48,8 @@ android {
         applicationId  = "com.badgr.orbreader"
         minSdk         = 26
         targetSdk      = 35
-        versionCode    = 8
-        versionName    = "2.5.2"
+        versionCode    = 25
+        versionName    = "3.2.5"
 
         buildConfigField(
             "String",
@@ -39,21 +63,23 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val ksFile = keystoreProps.getProperty("storeFile")
-            storeFile     = if (ksFile != null) file(ksFile) else file("../badgr_release.jks")
-            storePassword = keystoreProps.getProperty("storePassword")
-                ?: providers.gradleProperty("STORE_PASSWORD").orNull
-                ?: System.getenv("STORE_PASSWORD") ?: ""
-            keyAlias      = keystoreProps.getProperty("keyAlias") ?: "badgr_bolt"
-            keyPassword   = keystoreProps.getProperty("keyPassword")
-                ?: providers.gradleProperty("KEY_PASSWORD").orNull
-                ?: System.getenv("KEY_PASSWORD") ?: ""
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = keystoreProps.getProperty("keyAlias") ?: "badgr_bolt"
+                keyPassword = releaseKeyPassword
+            }
         }
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Allows `assembleRelease` to run for local/dev validation without private keystore material.
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

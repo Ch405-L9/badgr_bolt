@@ -31,14 +31,16 @@ import com.badgr.orbreader.ui.reader.ReaderScreen
 import com.badgr.orbreader.ui.stats.StatsScreen
 import com.badgr.orbreader.ui.settings.SettingsScreen
 import com.badgr.orbreader.ui.account.AccountScreen
+import com.badgr.orbreader.ui.onboarding.OnboardingScreen
 import com.badgr.orbreader.ui.theme.OrbreaderTheme
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
-    data object Library  : Screen("library",  "Library",  Icons.Default.CollectionsBookmark)
-    data object Stats    : Screen("stats",    "Stats",    Icons.Default.QueryStats)
-    data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
-    data object Account  : Screen("account",  "Account",  Icons.Default.Person)
+    data object Onboarding : Screen("onboarding", "Onboarding", Icons.Default.Person)
+    data object Library    : Screen("library",    "Library",    Icons.Default.CollectionsBookmark)
+    data object Stats      : Screen("stats",      "Stats",      Icons.Default.QueryStats)
+    data object Settings   : Screen("settings",   "Settings",   Icons.Default.Settings)
+    data object Account    : Screen("account",    "Account",    Icons.Default.Person)
 }
 
 class MainActivity : ComponentActivity() {
@@ -64,7 +66,8 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                val showBottomNav = currentDestination?.route?.startsWith("reader") != true
+                val showBottomNav = currentDestination?.route?.startsWith("reader") != true && 
+                                   currentDestination?.route != Screen.Onboarding.route
 
                 Scaffold(
                     bottomBar = {
@@ -96,8 +99,18 @@ class MainActivity : ComponentActivity() {
                     ) {
                         NavHost(
                             navController    = navController,
-                            startDestination = Screen.Library.route
+                            startDestination = if (prefs.hasSeenOnboarding) Screen.Library.route else Screen.Onboarding.route
                         ) {
+                            composable(Screen.Onboarding.route) {
+                                OnboardingScreen(onGetStarted = {
+                                    lifecycleScope.launch {
+                                        prefsRepo.setHasSeenOnboarding(true)
+                                        navController.navigate(Screen.Library.route) {
+                                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                                        }
+                                    }
+                                })
+                            }
                             composable(Screen.Library.route) {
                                 LibraryScreen(onOpenBook = { bookId ->
                                     navController.navigate("reader/$bookId")

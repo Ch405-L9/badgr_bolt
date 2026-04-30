@@ -22,6 +22,7 @@ local.properties
 # --- IDE — Android Studio / IntelliJ ---
 *.iml
 .idea/
+.claude/settings.local.json
 *.classpath
 *.project
 *.swp
@@ -34,13 +35,31 @@ captures/
 .kotlin/
 
 # --- Secrets and Credentials (NEVER COMMIT) ---
-google-services.json
-google-services-staging.json
+**/google-services.json
+**/google-services-*.json
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.der
+*.crt
+*.cer
 keystore.properties
-gradle.properties
 .badgr_env
+service-account*.json
+firebase-*.json
+credentials*.json
+secrets*.json
+.env
+.env.*
+.envrc
+
+# Android signing / publishing
+key.properties
+signing.properties
+play-account.json
 
 # --- Firebase / Google ---
 crashlytics.properties
@@ -80,4 +99,11 @@ commit_and_build.sh
 BADGR\ Bolt_*.md
 BADGR_BOLT_RELEASE_STRATEGY*.md
 .aider*
-.env
+
+# --- Local dev / scratch ---
+.venv/
+README_mods_update/
+img.b64
+unrelated/
+**/*play_console_final_phone_*.zip
+tools/

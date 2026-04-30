@@ -1,6 +1,6 @@
 # BADGR Bolt - Advanced RSVP Speed Reader
 
-**Version 2.6.0** | Android 8.0+ (API 26+) | BADGRTechnologies LLC
+**Version 3.2.5** | Android 8.0+ (API 26+) | BADGRTechnologies LLC
 
 BADGR Bolt is a precision speed reading application using Optimal Recognition Point (ORP)
 technology and Rapid Serial Visual Presentation (RSVP) to help you read faster with
@@ -41,7 +41,7 @@ better comprehension.
 | UX / UI Redesign             | Planned      | 2.5.6    | Full BADGR brand pass                    |
 | BADGR Logo Integration       | Planned      | 2.5.6    | Requires final logo assets               |
 | Closed Beta                  | Pending      | 2.6.1    | Signed AAB + 5 testers                   |
-| Public Launch                | Planned      | 3.0.0    |                                          |
+| Public Launch                | Shipped      | 3.2.5    | Play Console release candidate           |
 
 ---
 
@@ -93,16 +93,10 @@ git clone https://github.com/Ch405-L9/badgr_bolt.git
 cd badgr_bolt
 ```
 
-Create `gradle.properties` in project root (gitignored):
+Optional: add `app/google-services.json` (from Firebase Console). If absent, the project still syncs/builds,
+but Firebase/Crashlytics won’t be configured.
 
-```properties
-android.useAndroidX=true
-android.enableJetifier=true
-STORE_PASSWORD=your_keystore_password
-KEY_PASSWORD=your_key_password
-```
-
-Add `google-services.json` to `app/` (from Firebase Console, gitignored).
+For release signing, use `keystore.properties` (gitignored) and/or `STORE_PASSWORD`/`KEY_PASSWORD` env vars.
 
 ```bash
 ./gradlew assembleDebug
@@ -124,7 +118,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 - `google-services.json` — gitignored, never committed
 - `*.jks` keystore — offline only, never committed
-- `gradle.properties` — gitignored, credentials never in source
+- `keystore.properties` — gitignored, credentials never in source
 - ProGuard/R8 enabled for all release builds
 - Firestore rules: user-scoped, no cross-user access
 

@@ -14,6 +14,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.res.stringResource
+import com.badgr.orbreader.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.preferences.THEME_DARK
@@ -40,6 +45,7 @@ fun SettingsScreen(
     vm: SettingsViewModel = viewModel()
 ) {
     val prefs by vm.prefs.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = ReaderColors.background,
@@ -426,6 +432,48 @@ fun SettingsScreen(
                                 onClick = onNavigateToAccount,
                                 colors  = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
                             ) { Text("Unlock") }
+                        }
+                    }
+                }
+            }
+
+            // ── Support & Feedback ───────────────────────────────────────
+            item {
+                SettingSection(title = "Support & Feedback") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.badgr.orbreader"))
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
+                        ) {
+                            Text(stringResource(R.string.rate_app))
+                        }
+                        
+                        OutlinedButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:support@badgr.com")
+                                    putExtra(Intent.EXTRA_SUBJECT, "BADGR Bolt Feedback")
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
+                        ) {
+                            Text(stringResource(R.string.feedback))
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                // Placeholder for Help/FAQ
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ReaderColors.orpFocal)
+                        ) {
+                            Text(stringResource(R.string.help_faq))
                         }
                     }
                 }

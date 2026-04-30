@@ -1,3 +1,11 @@
+## [3.2.5] — 2026-04-29
+
+### Changed
+- Build: Google Services + Crashlytics plugins now apply only when `app/google-services.json` is present
+- Release signing: falls back to debug signing when local keystore credentials are not configured
+- Repo hygiene: hardened `.gitignore` (keystores/keys/env files) and removed IDE/local config noise from git
+- Cleanup: removed non-product documents/artifacts from version control (kept locally under `unrelated/`)
+
 ## [2.6.0] — 2026-03-14
 
 ### Added
