@@ -33,6 +33,10 @@ import com.badgr.orbreader.ui.settings.SettingsScreen
 import com.badgr.orbreader.ui.account.AccountScreen
 import com.badgr.orbreader.ui.onboarding.OnboardingScreen
 import com.badgr.orbreader.ui.theme.OrbreaderTheme
+import com.badgr.orbreader.ui.components.WalkthroughOverlay
+import com.badgr.orbreader.ui.components.WalkthroughStep
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -97,7 +101,10 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color    = MaterialTheme.colorScheme.background
                     ) {
-                        NavHost(
+                        val showWalkthrough = remember { mutableStateOf(!prefs.hasSeenHelp && prefs.hasSeenOnboarding) }
+                        
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            NavHost(
                             navController    = navController,
                             startDestination = if (prefs.hasSeenOnboarding) Screen.Library.route else Screen.Onboarding.route
                         ) {
@@ -138,6 +145,55 @@ class MainActivity : ComponentActivity() {
                                 })
                             }
                             composable(Screen.Account.route)  { AccountScreen() }
+                        }
+
+                        if (showWalkthrough.value) {
+                            WalkthroughOverlay(
+                                steps = listOf(
+                                    WalkthroughStep(
+                                        "Library",
+                                        "This is where all your books live. Tap the + button to import PDF, EPUB, or TXT files."
+                                    ),
+                                    WalkthroughStep(
+                                        "Stats",
+                                        "Track your reading speed, words read, and unlock achievements as you improve."
+                                    ),
+                                    WalkthroughStep(
+                                        "Settings",
+                                        "Customize your reading experience. Change fonts, colors, and speed to match your preference."
+                                    ),
+                                    WalkthroughStep(
+                                        "Account",
+                                        "Sign in to sync your library across devices and unlock Pro features."
+                                    ),
+                                    WalkthroughStep(
+                                        "Welcome Guide",
+                                        "We've added a welcome guide in your library. Open it anytime for a detailed manual!"
+                                    )
+                                ),
+                                onStepChange = { index ->
+                                    val routes = listOf(
+                                        Screen.Library.route,
+                                        Screen.Stats.route,
+                                        Screen.Settings.route,
+                                        Screen.Account.route,
+                                        Screen.Library.route
+                                    )
+                                    if (index < routes.size) {
+                                        navController.navigate(routes[index]) {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                },
+                                onComplete = {
+                                    showWalkthrough.value = false
+                                    lifecycleScope.launch {
+                                        prefsRepo.setHasSeenHelp(true)
+                                    }
+                                }
+                            )
                         }
                     }
                 }

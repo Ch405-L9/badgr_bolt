@@ -1,0 +1,23 @@
+Welcome to BADGR Bolt!
+
+BADGR Bolt is a precision speed reading app that uses RSVP (Rapid Serial Visual Presentation) and ORP (Optimal Recognition Point) to help you read faster with better comprehension.
+
+Getting Started:
+When you open BADGR Bolt, you will see the main navigation bar at the bottom of the screen with four tabs: Library, Stats, Settings, and Account.
+
+Adding Your First Book:
+1. Go to the Library tab.
+2. Tap the + button in the bottom-right corner.
+3. Choose your file format (TXT, PDF, EPUB, DOCX, or IMAGE).
+4. Select your document from your device or cloud storage.
+5. Once imported, tap the book in your library to start reading.
+
+Reading Controls:
+- WPM: Adjust your reading speed from 60 to 1200 WPM.
+- Words at a time: Choose 1-4 words per frame.
+- Punctuation pauses: Natural rhythm with automatic pauses.
+
+Pro Features:
+Upgrade to Bolt Pro for cloud sync, unlimited library, and advanced stats. Check the Account tab for more details.
+
+Enjoy your reading journey with BADGR Bolt!

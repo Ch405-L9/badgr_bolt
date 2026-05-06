@@ -4,6 +4,12 @@ import android.app.Application
 import com.badgr.orbreader.billing.InAppPurchaseManager
 import com.badgr.orbreader.billing.ProGate
 import com.badgr.orbreader.data.preferences.UserPreferencesRepository
+import com.badgr.orbreader.data.local.BookDatabase
+import com.badgr.orbreader.data.local.BookEntity
+import com.badgr.orbreader.data.model.FileType
+import com.badgr.orbreader.util.WordTokenizer
+import com.google.gson.Gson
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -59,6 +65,36 @@ class OrbReaderApp : Application() {
                 ProGate.setProEntitlement(isPro)
                 applicationScope.launch(Dispatchers.IO) {
                     userPreferencesRepository.setIsPro(isPro)
+                }
+            }
+        }
+
+        // Pre-populate library with manual if empty
+        applicationScope.launch(Dispatchers.IO) {
+            val db = BookDatabase.getInstance(this@OrbReaderApp)
+            if (db.bookDao().bookCount() == 0) {
+                try {
+                    val manualId = "welcome_guide"
+                    val manualTitle = "Welcome to BADGR Bolt"
+                    val manualText = assets.open("manual_text.txt").bufferedReader().use { it.readText() }
+                    val words = WordTokenizer.tokenize(manualText)
+                    
+                    val book = BookEntity(
+                        id = manualId,
+                        title = manualTitle,
+                        fileType = FileType.PDF.name,
+                        wordCount = words.size,
+                        createdAt = System.currentTimeMillis(),
+                        coverPath = null
+                    )
+                    
+                    // Save words to file
+                    val wordFile = File(filesDir, "words_$manualId.json")
+                    wordFile.writeText(Gson().toJson(words))
+                    
+                    db.bookDao().insertBook(book)
+                } catch (e: Exception) {
+                    android.util.Log.e("OrbReaderApp", "Failed to pre-populate manual: ${e.localizedMessage}")
                 }
             }
         }
