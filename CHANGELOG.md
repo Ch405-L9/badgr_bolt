@@ -1,3 +1,28 @@
+## [4.4] — 2026-05-30
+
+### Build Infrastructure
+
+- Resolved critical build regression introduced by Android Studio auto-update: reverted `compileSdk` from 37 to 35. Platform SDK `android-37` is not available in this environment, and AGP 8.7.3 is validated against `compileSdk` 35 at maximum. Targeting SDK levels beyond the validated ceiling produces undefined toolchain behavior and breaks the build pipeline entirely.
+- `targetSdk` remains at 35, satisfying Google Play's mandatory API 35 compliance requirement (enforced August 2025).
+- Added `org.gradle.toolchains.foojay-resolver-convention` to `settings.gradle.kts` per Android Studio toolchain hygiene recommendations.
+
+### Release
+
+- `versionCode` advanced to 28; `versionName` designated **4.4** for the current closed testing phase on Google Play Console.
+- Signed release AAB and APK produced successfully via `./gradlew clean assembleRelease bundleRelease` (67 tasks, BUILD SUCCESSFUL).
+- Release artifacts signed with production keystore (`badgr_release.jks`).
+
+### Known Issues
+
+- `statusBarColor` deprecation in `Theme.kt:45` — non-blocking warning, deferred to next maintenance cycle (tracked as TD-004).
+
+### Release Artifacts
+
+- Signed AAB: `app/build/outputs/bundle/release/app-release.aab`
+- Signed APK: `app/build/outputs/apk/release/app-release.apk`
+
+---
+
 ## [3.2.6] — 2026-04-29
 
 ### Changed
