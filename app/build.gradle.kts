@@ -19,7 +19,7 @@ if (hasGoogleServicesJson) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
-// Load keystore credentials from keystore.properties (gitignored — never committed)
+// Load keystore credentials from keystore.properties (gitignore — never committed)
 val keystoreProps = Properties().also { props ->
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { props.load(it) }
@@ -48,8 +48,8 @@ android {
         applicationId  = "com.badgr.orbreader"
         minSdk         = 26
         targetSdk      = 35
-        versionCode    = 26
-        versionName    = "3.2.6"
+        versionCode    = 28
+        versionName    = "4.4"
 
         buildConfigField(
             "String",
